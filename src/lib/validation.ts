@@ -36,3 +36,19 @@ export function fieldErrors(error: z.ZodError): Record<string, string> {
 
   return salida;
 }
+
+export const movimientoSchema = z.object({
+  type: z.enum(["INCOME", "EXPENSE"], { message: "Elegi si es ingreso o gasto" }),
+  description: z
+    .string()
+    .trim()
+    .min(1, "Escribi una descripcion")
+    .max(120, "Esa descripcion es demasiado larga"),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Elegi una fecha"),
+  // Llega como texto del input y se valida en centavos en la action, que es
+  // donde vive la conversion (inputToCents).
+  amount: z.string().min(1, "Escribi un monto"),
+  categoryId: z.string().trim().min(1, "Elegi una categoria"),
+});

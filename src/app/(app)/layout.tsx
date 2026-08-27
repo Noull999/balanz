@@ -1,4 +1,4 @@
-import { LayoutDashboard, LogOut, ScaleIcon } from "lucide-react";
+import { ArrowLeftRight, LayoutDashboard, LogOut, ScaleIcon } from "lucide-react";
 import Link from "next/link";
 
 import { salir } from "@/lib/actions/auth";
@@ -29,6 +29,13 @@ export default async function AppLayout({
             >
               <LayoutDashboard className="size-4" />
               Panel
+            </Link>
+            <Link
+              href="/movimientos"
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-muted transition hover:bg-background hover:text-foreground"
+            >
+              <ArrowLeftRight className="size-4" />
+              Movimientos
             </Link>
           </nav>
 

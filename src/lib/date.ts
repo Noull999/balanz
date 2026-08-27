@@ -63,3 +63,18 @@ export function isWeekend(date: Date): boolean {
   const day = date.getUTCDay();
   return day === 0 || day === 6;
 }
+
+/** Zona horaria de referencia de la app. */
+const ZONA = "America/Argentina/Buenos_Aires";
+
+/**
+ * "2026-08-27" para el dia de hoy en Argentina.
+ *
+ * Anclado a una zona fija a proposito: en Vercel el servidor corre en UTC, asi
+ * que a las 22 de un martes el server diria "miercoles" y el navegador "martes"
+ * — fecha equivocada por defecto y ademas un error de hidratacion.
+ * "en-CA" es el truco para que Intl devuelva justo el formato YYYY-MM-DD.
+ */
+export function todayInput(fecha = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: ZONA }).format(fecha);
+}
