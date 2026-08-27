@@ -1,16 +1,11 @@
-import { ArrowUpRight, ScaleIcon } from "lucide-react";
+import { ArrowRight, ScaleIcon } from "lucide-react";
+import Link from "next/link";
 
-const pasos = [
-  { titulo: "Setup del proyecto", listo: true },
-  { titulo: "Cuentas y login", listo: false },
-  { titulo: "Carga de movimientos", listo: false },
-  { titulo: "Categorias propias", listo: false },
-  { titulo: "Dashboard del mes", listo: false },
-  { titulo: "Motor de recomendaciones", listo: false },
-  { titulo: "Presupuestos", listo: false },
-];
+import { getCurrentUser } from "@/lib/auth";
 
-export default function Home() {
+export default async function Home() {
+  const user = await getCurrentUser();
+
   return (
     <main className="flex flex-1 items-center justify-center px-6 py-16">
       <div className="w-full max-w-xl">
@@ -31,35 +26,33 @@ export default function Home() {
           estas por pasarte del presupuesto.
         </p>
 
-        <div className="mt-10 rounded-xl border border-border bg-surface p-5">
-          <p className="text-sm font-medium">En construccion</p>
-          <ul className="mt-4 space-y-2.5">
-            {pasos.map((paso) => (
-              <li key={paso.titulo} className="flex items-center gap-3 text-sm">
-                <span
-                  className={`size-1.5 shrink-0 rounded-full ${
-                    paso.listo ? "bg-brand" : "bg-border"
-                  }`}
-                  aria-hidden
-                />
-                <span className={paso.listo ? "" : "text-muted"}>
-                  {paso.titulo}
-                </span>
-                {paso.listo && (
-                  <span className="ml-auto text-xs text-brand">listo</span>
-                )}
-              </li>
-            ))}
-          </ul>
+        <div className="mt-10 flex flex-wrap items-center gap-3">
+          {user ? (
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white transition hover:bg-brand-strong"
+            >
+              Ir a mi panel
+              <ArrowRight className="size-4" />
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/registro"
+                className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white transition hover:bg-brand-strong"
+              >
+                Crear cuenta
+                <ArrowRight className="size-4" />
+              </Link>
+              <Link
+                href="/login"
+                className="inline-flex items-center rounded-lg border border-border px-5 py-2.5 text-sm font-medium transition hover:bg-surface"
+              >
+                Ya tengo cuenta
+              </Link>
+            </>
+          )}
         </div>
-
-        <a
-          href="https://github.com"
-          className="mt-8 inline-flex items-center gap-1.5 text-sm font-medium text-brand hover:text-brand-strong"
-        >
-          Ver el codigo
-          <ArrowUpRight className="size-4" />
-        </a>
       </div>
     </main>
   );
