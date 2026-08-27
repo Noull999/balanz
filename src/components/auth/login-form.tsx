@@ -10,6 +10,7 @@ import { ingresar, type FormState } from "@/lib/actions/auth";
 export function LoginForm() {
   const [state, formAction] = useActionState<FormState, FormData>(ingresar, null);
   const errors = state?.errors ?? {};
+  const values = state?.values ?? {};
 
   return (
     <form action={formAction} className="space-y-4" noValidate>
@@ -20,6 +21,7 @@ export function LoginForm() {
         name="email"
         type="email"
         autoComplete="email"
+        defaultValue={values.email}
         error={errors.email}
       />
 

@@ -10,6 +10,7 @@ import { registrar, type FormState } from "@/lib/actions/auth";
 export function RegistroForm() {
   const [state, formAction] = useActionState<FormState, FormData>(registrar, null);
   const errors = state?.errors ?? {};
+  const values = state?.values ?? {};
 
   return (
     <form action={formAction} className="space-y-4" noValidate>
@@ -19,6 +20,7 @@ export function RegistroForm() {
         label="Nombre"
         name="name"
         autoComplete="name"
+        defaultValue={values.name}
         error={errors.name}
       />
 
@@ -27,6 +29,7 @@ export function RegistroForm() {
         name="email"
         type="email"
         autoComplete="email"
+        defaultValue={values.email}
         error={errors.email}
       />
 

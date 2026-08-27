@@ -12,20 +12,31 @@ import { DEFAULT_CATEGORIES } from "@/lib/default-categories";
 import { prisma } from "@/lib/prisma";
 import { fieldErrors, loginSchema, registroSchema } from "@/lib/validation";
 
-export type FormState = { errors: Record<string, string> } | null;
+/**
+ * React 19 resetea el form cuando termina la action, asi que se pierde lo tipeado.
+ * Devolvemos `values` para volver a pintar los campos (nunca la contrasena).
+ */
+export type FormState = {
+  errors: Record<string, string>;
+  values?: Record<string, string>;
+} | null;
 
 export async function registrar(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const values = {
+    name: String(formData.get("name") ?? ""),
+    email: String(formData.get("email") ?? ""),
+  };
+
   const parsed = registroSchema.safeParse({
-    name: formData.get("name"),
-    email: formData.get("email"),
+    ...values,
     password: formData.get("password"),
   });
 
   if (!parsed.success) {
-    return { errors: fieldErrors(parsed.error) };
+    return { errors: fieldErrors(parsed.error), values };
   }
 
   const { name, email, password } = parsed.data;
@@ -36,7 +47,7 @@ export async function registrar(
   });
 
   if (yaExiste) {
-    return { errors: { email: "Ya hay una cuenta con ese email" } };
+    return { errors: { email: "Ya hay una cuenta con ese email" }, values };
   }
 
   // La cuenta nace con sus categorias: sin esto la primera pantalla util
@@ -62,13 +73,15 @@ export async function ingresar(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const values = { email: String(formData.get("email") ?? "") };
+
   const parsed = loginSchema.safeParse({
-    email: formData.get("email"),
+    ...values,
     password: formData.get("password"),
   });
 
   if (!parsed.success) {
-    return { errors: fieldErrors(parsed.error) };
+    return { errors: fieldErrors(parsed.error), values };
   }
 
   const { email, password } = parsed.data;
@@ -80,7 +93,10 @@ export async function ingresar(
 
   // Mismo mensaje si el mail no existe o si la contrasena esta mal: distinguirlos
   // le confirmaria a un desconocido que ese email tiene cuenta.
-  const credencialesInvalidas = { errors: { form: "Email o contrasena incorrectos" } };
+  const credencialesInvalidas = {
+    errors: { form: "Email o contrasena incorrectos" },
+    values,
+  };
 
   if (!user) {
     // Se calcula un hash igual para que la respuesta tarde lo mismo que cuando
