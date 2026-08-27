@@ -1,0 +1,87 @@
+// Balanz — esquema de datos
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum CategoryKind {
+  INCOME
+  EXPENSE
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+
+  categories   Category[]
+  transactions Transaction[]
+  budgets      Budget[]
+}
+
+model Category {
+  id        String       @id @default(cuid())
+  userId    String
+  name      String
+  kind      CategoryKind
+  color     String       @default("#64748b") // hex, para los graficos
+  icon      String       @default("wallet") // nombre del icono de lucide-react
+  createdAt DateTime     @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  budget       Budget?
+
+  @@unique([userId, name, kind])
+  @@index([userId])
+}
+
+model Transaction {
+  id String @id @default(cuid())
+
+  userId     String
+  categoryId String?
+
+  // La plata se guarda en centavos (entero) para no arrastrar errores de punto flotante.
+  amountCents Int
+  type        CategoryKind
+  description String
+
+  // Solo importa el dia. Se guarda siempre a medianoche UTC y se lee con getters UTC
+  // (ver src/lib/date.ts) para que no se corra un dia segun la zona horaria.
+  date DateTime
+
+  // Lo calcula el motor de recomendaciones, no lo carga el usuario.
+  isRecurringGuess Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([userId, date])
+  @@index([userId, categoryId])
+}
+
+model Budget {
+  id                String   @id @default(cuid())
+  userId            String
+  categoryId        String   @unique
+  monthlyLimitCents Int
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
