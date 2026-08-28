@@ -78,9 +78,14 @@ export default async function DashboardPage() {
             />
           </div>
 
-          <AiSummary />
-
-          <AiAsk />
+          <div className="grid items-start gap-5 xl:grid-cols-2">
+            <div className="min-w-0">
+              <AiSummary />
+            </div>
+            <div className="min-w-0">
+              <AiAsk />
+            </div>
+          </div>
 
           <div className="grid gap-5 xl:grid-cols-2">
             <div className="min-w-0 rounded-xl border border-border bg-surface p-6">
