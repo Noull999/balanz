@@ -50,7 +50,7 @@ export async function crearCategoria(
 
   if (yaExiste) {
     return {
-      errors: { name: "Ya tenes una categoria con ese nombre y tipo" },
+      errors: { name: "Ya tienes una categoria con ese nombre y tipo" },
       values: formDataToValues(formData),
     };
   }
@@ -83,7 +83,7 @@ export async function actualizarCategoria(
 
   if (yaExiste) {
     return {
-      errors: { name: "Ya tenes otra categoria con ese nombre y tipo" },
+      errors: { name: "Ya tienes otra categoria con ese nombre y tipo" },
       values: formDataToValues(formData),
     };
   }

@@ -17,7 +17,7 @@ export default async function Home() {
         </div>
 
         <h1 className="mt-8 text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
-          Tus gastos, con alguien que los mira por vos.
+          Tus gastos, con alguien que los mira por ti.
         </h1>
 
         <p className="mt-4 text-lg text-muted text-pretty">

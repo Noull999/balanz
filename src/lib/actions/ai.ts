@@ -64,13 +64,13 @@ export async function generarResumenMensual(): Promise<ResultadoIA> {
     .filter(Boolean)
     .join("\n");
 
-  const prompt = `Sos el asistente financiero de Balanz, una app de control de gastos personales en Argentina.
+  const prompt = `Eres el asistente financiero de Balanz, una app de control de gastos personales.
 Con estos datos reales del mes (ya calculados, no inventes otros numeros ni otras categorias):
 
 ${lineas}
 
-Escribi un resumen corto (maximo 4 frases, sin listas ni markdown) en espanol rioplatense, tuteando de "vos",
-tono cercano y directo, sin exagerar ni sonar alarmista. Mencioná el dato mas relevante primero.`;
+Escribe un resumen corto (maximo 4 frases, sin listas ni markdown) en espanol neutro, tuteando de "tu",
+tono cercano y directo, sin exagerar ni sonar alarmista. Menciona el dato mas relevante primero.`;
 
   return generarTexto(prompt);
 }

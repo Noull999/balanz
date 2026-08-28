@@ -1,9 +1,9 @@
 // Toda la plata se guarda como centavos enteros. Estas son las unicas funciones
 // que deberian traducir entre centavos y lo que ve o escribe el usuario.
 
-const formatter = new Intl.NumberFormat("es-AR", {
+const formatter = new Intl.NumberFormat("es-CL", {
   style: "currency",
-  currency: "ARS",
+  currency: "CLP",
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 });

@@ -133,8 +133,8 @@ export function reglaSuscripciones(transacciones: TransaccionInsight[]): Insight
     {
       id: "suscripciones",
       severidad: "info",
-      titulo: `Tenes ${nombres.length} gasto${nombres.length > 1 ? "s" : ""} recurrente${nombres.length > 1 ? "s" : ""}`,
-      mensaje: `${nombres.join(", ")} suman ${(totalMensual / 100).toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 })} por mes, se repitan o no te des cuenta.`,
+      titulo: `Tienes ${nombres.length} gasto${nombres.length > 1 ? "s" : ""} recurrente${nombres.length > 1 ? "s" : ""}`,
+      mensaje: `${nombres.join(", ")} suman ${(totalMensual / 100).toLocaleString("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 })} por mes, se repitan o no te des cuenta.`,
     },
   ];
 }

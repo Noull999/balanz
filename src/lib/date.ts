@@ -42,7 +42,7 @@ export function toDateInput(date: Date): string {
 
 /** "agosto 2026" */
 export function formatMonth(date: Date): string {
-  return new Intl.DateTimeFormat("es-AR", {
+  return new Intl.DateTimeFormat("es-CL", {
     month: "long",
     year: "numeric",
     timeZone: "UTC",
@@ -51,7 +51,7 @@ export function formatMonth(date: Date): string {
 
 /** "27 ago" */
 export function formatDay(date: Date): string {
-  return new Intl.DateTimeFormat("es-AR", {
+  return new Intl.DateTimeFormat("es-CL", {
     day: "numeric",
     month: "short",
     timeZone: "UTC",
@@ -65,10 +65,10 @@ export function isWeekend(date: Date): boolean {
 }
 
 /** Zona horaria de referencia de la app. */
-const ZONA = "America/Argentina/Buenos_Aires";
+const ZONA = "America/Santiago";
 
 /**
- * "2026-08-27" para el dia de hoy en Argentina.
+ * "2026-08-27" para el dia de hoy en Chile.
  *
  * Anclado a una zona fija a proposito: en Vercel el servidor corre en UTC, asi
  * que a las 22 de un martes el server diria "miercoles" y el navegador "martes"

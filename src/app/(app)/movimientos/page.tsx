@@ -57,7 +57,7 @@ export default async function MovimientosPage() {
             strokeWidth={1.5}
             aria-hidden
           />
-          <p className="mt-4 font-medium">Cargá tu primer movimiento</p>
+          <p className="mt-4 font-medium">Carga tu primer movimiento</p>
           <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
             Con unas semanas de datos Balanz empieza a encontrar patrones y a
             avisarte lo que no ves.

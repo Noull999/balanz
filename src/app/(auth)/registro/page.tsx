@@ -16,7 +16,7 @@ export default function RegistroPage() {
       <RegistroForm />
 
       <p className="mt-6 text-center text-sm text-muted">
-        Ya tenes cuenta?{" "}
+        Ya tienes cuenta?{" "}
         <Link href="/login" className="font-medium text-brand hover:underline">
           Entrar
         </Link>

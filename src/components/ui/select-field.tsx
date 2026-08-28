@@ -17,7 +17,7 @@ export function SelectField({
   value,
   onChange,
   error,
-  placeholder = "Elegi una opcion",
+  placeholder = "Elige una opcion",
 }: SelectFieldProps) {
   const errorId = `${name}-error`;
 

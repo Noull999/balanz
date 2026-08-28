@@ -117,7 +117,7 @@ export function MovimientoForm({
         value={categoriaId}
         onChange={setCategoriaId}
         error={errors.categoryId}
-        placeholder={tipo === "EXPENSE" ? "Elegi un gasto" : "Elegi un ingreso"}
+        placeholder={tipo === "EXPENSE" ? "Elige un gasto" : "Elige un ingreso"}
       />
 
       <div className="flex items-center gap-3 pt-2">

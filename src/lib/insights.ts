@@ -120,7 +120,7 @@ export function serieMensual(
   hoy: Date,
   meses: number,
 ): PuntoMensual[] {
-  const formatter = new Intl.DateTimeFormat("es-AR", { month: "short", timeZone: "UTC" });
+  const formatter = new Intl.DateTimeFormat("es-CL", { month: "short", timeZone: "UTC" });
   const puntos: PuntoMensual[] = [];
 
   for (let i = meses - 1; i >= 0; i--) {

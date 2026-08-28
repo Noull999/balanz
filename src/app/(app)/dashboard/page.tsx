@@ -20,7 +20,7 @@ const MESES_HISTORIAL = 6;
 export default async function DashboardPage() {
   const user = await requireUser();
 
-  // "Hoy" ancla al dia calendario de Argentina, no al reloj UTC del server:
+  // "Hoy" ancla al dia calendario de Chile, no al reloj UTC del server:
   // ver el comentario de todayInput en src/lib/date.ts.
   const hoy = toUtcDay(todayInput());
   const desde = startOfUtcMonth(addUtcMonths(hoy, -(MESES_HISTORIAL - 1)));
@@ -100,7 +100,7 @@ export default async function DashboardPage() {
             <p className="mt-1 text-sm text-muted">
               {presupuestoDiarioCents > 0
                 ? `Compara cada dia contra ${formatMoney(presupuestoDiarioCents)}, tu presupuesto mensual repartido entre los dias del mes.`
-                : "Definí presupuestos para ver que dias te fuiste de ritmo."}
+                : "Define presupuestos para ver que dias te fuiste de ritmo."}
             </p>
             <div className="mt-5">
               <SpendingCalendar dias={gastoDiario} presupuestoDiarioCents={presupuestoDiarioCents} hoy={hoy} />

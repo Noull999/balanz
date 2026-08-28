@@ -10,13 +10,13 @@ export default function LoginPage() {
     <>
       <h1 className="text-lg font-semibold">Entrar</h1>
       <p className="mt-1 mb-6 text-sm text-muted">
-        Segui donde dejaste tus cuentas.
+        Sigue donde dejaste tus cuentas.
       </p>
 
       <LoginForm />
 
       <p className="mt-6 text-center text-sm text-muted">
-        No tenes cuenta?{" "}
+        No tienes cuenta?{" "}
         <Link href="/registro" className="font-medium text-brand hover:underline">
           Crear una
         </Link>
