@@ -52,3 +52,16 @@ export const movimientoSchema = z.object({
   amount: z.string().min(1, "Escribi un monto"),
   categoryId: z.string().trim().min(1, "Elegi una categoria"),
 });
+
+export const categoriaSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Escribi un nombre")
+    .max(40, "Ese nombre es demasiado largo"),
+  kind: z.enum(["INCOME", "EXPENSE"], { message: "Elegi ingreso o gasto" }),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Elegi un color"),
+  icon: z.string().min(1, "Elegi un icono"),
+});
