@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { AiSummary } from "@/components/dashboard/ai-summary";
 import { BalanceChart } from "@/components/dashboard/balance-chart";
 import { CategoryPieChart } from "@/components/dashboard/category-pie-chart";
 import { InsightCard } from "@/components/dashboard/insight-card";
@@ -75,6 +76,8 @@ export default async function DashboardPage() {
               tone={resumen.balanceCents >= 0 ? "positive" : "negative"}
             />
           </div>
+
+          <AiSummary />
 
           <div className="grid gap-4 xl:grid-cols-2">
             <div className="rounded-xl border border-border bg-surface p-5">
