@@ -78,15 +78,6 @@ export default async function DashboardPage() {
             />
           </div>
 
-          <div className="grid items-start gap-5 xl:grid-cols-2">
-            <div className="min-w-0">
-              <AiSummary />
-            </div>
-            <div className="min-w-0">
-              <AiAsk />
-            </div>
-          </div>
-
           <div className="grid gap-5 xl:grid-cols-2">
             <div className="min-w-0 rounded-xl border border-border bg-surface p-6">
               <h2 className="text-sm font-medium">Gasto por categoria este mes</h2>
@@ -116,19 +107,24 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <aside className="space-y-4 lg:sticky lg:top-8 lg:self-start">
-          <h2 className="text-sm font-medium text-muted">Recomendaciones</h2>
-          {recomendaciones.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted">
-              Todavia no hay nada para avisarte. A medida que cargues mas movimientos van a aparecer patrones aca.
-            </p>
-          ) : (
-            <ul className="space-y-2.5">
-              {recomendaciones.map((insight) => (
-                <InsightCard key={insight.id} insight={insight} />
-              ))}
-            </ul>
-          )}
+        <aside className="space-y-5 lg:sticky lg:top-8 lg:self-start">
+          <div>
+            <h2 className="text-sm font-medium text-muted">Recomendaciones</h2>
+            {recomendaciones.length === 0 ? (
+              <p className="mt-3 rounded-xl border border-dashed border-border p-4 text-sm text-muted">
+                Todavia no hay nada para avisarte. A medida que cargues mas movimientos van a aparecer patrones aca.
+              </p>
+            ) : (
+              <ul className="mt-3 space-y-2.5">
+                {recomendaciones.map((insight) => (
+                  <InsightCard key={insight.id} insight={insight} />
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <AiSummary />
+          <AiAsk />
         </aside>
       </div>
     </>

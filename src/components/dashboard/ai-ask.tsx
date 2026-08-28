@@ -3,6 +3,7 @@
 import { MessageCircleQuestion, Send } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { preguntarIA } from "@/lib/actions/ai";
 
 type Intercambio = { pregunta: string; respuesta: string; esError: boolean };
@@ -34,17 +35,13 @@ export function AiAsk() {
   }
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-6">
-      <h2 className="flex items-center gap-1.5 text-sm font-medium">
-        <MessageCircleQuestion className="size-4 text-brand" />
-        Preguntale a tus finanzas
-      </h2>
-      <p className="mt-1 text-sm text-muted">
+    <CollapsibleCard icon={MessageCircleQuestion} titulo="Preguntale a tus finanzas">
+      <p className="text-sm text-muted">
         Le pregunta a Gemini, pero solo puede contestar con los datos que ya ves en este panel.
       </p>
 
       {historial.length === 0 ? (
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           {EJEMPLOS.map((ejemplo) => (
             <button
               key={ejemplo}
@@ -58,7 +55,7 @@ export function AiAsk() {
           ))}
         </div>
       ) : (
-        <ul className="mt-4 space-y-3">
+        <ul className="mt-3 space-y-3">
           {historial.map((item, i) => (
             <li key={i} className="space-y-1.5">
               <p className="text-sm font-medium">{item.pregunta}</p>
@@ -71,7 +68,7 @@ export function AiAsk() {
       )}
 
       <form
-        className="mt-4 flex gap-2"
+        className="mt-3 flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           enviar(inputRef.current?.value ?? "");
@@ -92,6 +89,6 @@ export function AiAsk() {
           <Send className="size-4" />
         </button>
       </form>
-    </div>
+    </CollapsibleCard>
   );
 }

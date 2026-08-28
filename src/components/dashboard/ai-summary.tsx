@@ -3,6 +3,7 @@
 import { Lightbulb, Loader, Sparkles } from "lucide-react";
 import { useState, useTransition } from "react";
 
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { generarResumenMensual, type ResumenConTips } from "@/lib/actions/ai";
 
 type Estado =
@@ -24,12 +25,12 @@ export function AiSummary() {
   }
 
   return (
-    <div className="rounded-xl border border-brand/30 bg-brand/5 p-5">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-1.5 text-sm font-medium text-brand">
-          <Sparkles className="size-4" />
-          Resumen con IA
-        </h2>
+    <CollapsibleCard icon={Sparkles} titulo="Resumen con IA" tono="brand">
+      <div className="flex items-start justify-between gap-3 text-sm">
+        <p className="text-muted">
+          Un resumen del mes y un par de tips escritos por Gemini a partir de los mismos numeros que ves en el
+          panel — la IA solo los redacta, no calcula nada por su cuenta.
+        </p>
 
         <button
           type="button"
@@ -42,32 +43,24 @@ export function AiSummary() {
         </button>
       </div>
 
-      <div className="mt-3 text-sm">
-        {estado.tipo === "inicial" && !pending && (
-          <p className="text-muted">
-            Un resumen del mes y un par de tips escritos por Gemini a partir de los mismos numeros que ves abajo
-            — la IA solo los redacta, no calcula nada por su cuenta.
-          </p>
-        )}
-        {pending && <p className="text-muted">Pensando...</p>}
-        {estado.tipo === "error" && <p className="text-negative">{estado.mensaje}</p>}
-        {estado.tipo === "exito" && (
-          <div className="space-y-3">
-            <p className="text-pretty">{estado.datos.resumen}</p>
+      {pending && <p className="mt-3 text-sm text-muted">Pensando...</p>}
+      {estado.tipo === "error" && <p className="mt-3 text-sm text-negative">{estado.mensaje}</p>}
+      {estado.tipo === "exito" && (
+        <div className="mt-3 space-y-3 text-sm">
+          <p className="text-pretty">{estado.datos.resumen}</p>
 
-            {estado.datos.tips.length > 0 && (
-              <ul className="space-y-1.5">
-                {estado.datos.tips.map((tip, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-brand" aria-hidden />
-                    <span className="text-pretty">{tip}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+          {estado.datos.tips.length > 0 && (
+            <ul className="space-y-1.5">
+              {estado.datos.tips.map((tip, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-brand" aria-hidden />
+                  <span className="text-pretty">{tip}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </CollapsibleCard>
   );
 }
