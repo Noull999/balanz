@@ -82,6 +82,31 @@ export function gastoPorCategoria(
   return [...acumulado.values()].sort((a, b) => b.amountCents - a.amountCents);
 }
 
+export type GastoDiario = { day: number; date: Date; amountCents: number };
+
+/** Gasto de cada dia del mes (day 1..N), para el calendario de presupuesto diario. */
+export function gastoPorDia(
+  transacciones: TransaccionInsight[],
+  mes: Date,
+): GastoDiario[] {
+  const desde = startOfUtcMonth(mes);
+  const hasta = startOfNextUtcMonth(mes);
+  const dias = Math.round((hasta.getTime() - desde.getTime()) / 86_400_000);
+
+  const totales = new Array(dias).fill(0) as number[];
+  for (const t of transacciones) {
+    if (t.type !== "EXPENSE" || !enRango(t.date, desde, hasta)) continue;
+    const indice = Math.round((t.date.getTime() - desde.getTime()) / 86_400_000);
+    totales[indice] += t.amountCents;
+  }
+
+  return totales.map((amountCents, i) => ({
+    day: i + 1,
+    date: new Date(desde.getTime() + i * 86_400_000),
+    amountCents,
+  }));
+}
+
 export type PuntoMensual = {
   mes: string;
   incomeCents: number;

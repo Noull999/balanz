@@ -78,3 +78,8 @@ const ZONA = "America/Argentina/Buenos_Aires";
 export function todayInput(fecha = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: ZONA }).format(fecha);
 }
+
+/** Cantidad de dias del mes de `date`. */
+export function daysInUtcMonth(date: Date): number {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+}

@@ -3,10 +3,11 @@ import type { Metadata } from "next";
 import { BalanceChart } from "@/components/dashboard/balance-chart";
 import { CategoryPieChart } from "@/components/dashboard/category-pie-chart";
 import { InsightCard } from "@/components/dashboard/insight-card";
+import { SpendingCalendar } from "@/components/dashboard/spending-calendar";
 import { StatTile } from "@/components/dashboard/stat-tile";
 import { requireUser } from "@/lib/auth";
-import { addUtcMonths, startOfUtcMonth, todayInput, toUtcDay } from "@/lib/date";
-import { gastoPorCategoria, resumenMensual, serieMensual } from "@/lib/insights";
+import { addUtcMonths, daysInUtcMonth, startOfUtcMonth, todayInput, toUtcDay } from "@/lib/date";
+import { gastoPorCategoria, gastoPorDia, resumenMensual, serieMensual } from "@/lib/insights";
 import { formatMoney } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { generarRecomendaciones } from "@/lib/recommendations";
@@ -52,6 +53,10 @@ export default async function DashboardPage() {
   const serie = serieMensual(transacciones, hoy, MESES_HISTORIAL);
   const recomendaciones = generarRecomendaciones(transacciones, presupuestos, hoy);
 
+  const gastoDiario = gastoPorDia(transacciones, hoy);
+  const presupuestoTotalCents = presupuestos.reduce((total, p) => total + p.monthlyLimitCents, 0);
+  const presupuestoDiarioCents = Math.round(presupuestoTotalCents / daysInUtcMonth(hoy));
+
   return (
     <>
       <h1 className="text-2xl font-semibold tracking-tight">
@@ -59,41 +64,61 @@ export default async function DashboardPage() {
       </h1>
       <p className="mt-1 text-muted">Asi viene este mes.</p>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        <StatTile label="Ingresos del mes" value={formatMoney(resumen.incomeCents)} tone="positive" />
-        <StatTile label="Gastos del mes" value={formatMoney(resumen.expenseCents)} tone="negative" />
-        <StatTile
-          label="Balance"
-          value={formatMoney(resumen.balanceCents)}
-          tone={resumen.balanceCents >= 0 ? "positive" : "negative"}
-        />
-      </div>
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="min-w-0 space-y-6">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <StatTile label="Ingresos del mes" value={formatMoney(resumen.incomeCents)} tone="positive" />
+            <StatTile label="Gastos del mes" value={formatMoney(resumen.expenseCents)} tone="negative" />
+            <StatTile
+              label="Balance"
+              value={formatMoney(resumen.balanceCents)}
+              tone={resumen.balanceCents >= 0 ? "positive" : "negative"}
+            />
+          </div>
 
-      {recomendaciones.length > 0 && (
-        <div className="mt-6">
+          <div className="grid gap-4 xl:grid-cols-2">
+            <div className="rounded-xl border border-border bg-surface p-5">
+              <h2 className="text-sm font-medium">Gasto por categoria este mes</h2>
+              <div className="mt-4">
+                <CategoryPieChart data={categorias} />
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border bg-surface p-5">
+              <h2 className="text-sm font-medium">Ultimos {MESES_HISTORIAL} meses</h2>
+              <div className="mt-4">
+                <BalanceChart data={serie} />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-surface p-5">
+            <h2 className="text-sm font-medium">Ritmo de gasto diario</h2>
+            <p className="mt-1 text-sm text-muted">
+              {presupuestoDiarioCents > 0
+                ? `Compara cada dia contra ${formatMoney(presupuestoDiarioCents)}, tu presupuesto mensual repartido entre los dias del mes.`
+                : "Definí presupuestos para ver que dias te fuiste de ritmo."}
+            </p>
+            <div className="mt-4">
+              <SpendingCalendar dias={gastoDiario} presupuestoDiarioCents={presupuestoDiarioCents} hoy={hoy} />
+            </div>
+          </div>
+        </div>
+
+        <aside className="space-y-3 lg:sticky lg:top-6 lg:self-start">
           <h2 className="text-sm font-medium text-muted">Recomendaciones</h2>
-          <ul className="mt-3 space-y-2.5">
-            {recomendaciones.map((insight) => (
-              <InsightCard key={insight.id} insight={insight} />
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-surface p-5">
-          <h2 className="text-sm font-medium">Gasto por categoria este mes</h2>
-          <div className="mt-4">
-            <CategoryPieChart data={categorias} />
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border bg-surface p-5">
-          <h2 className="text-sm font-medium">Ultimos {MESES_HISTORIAL} meses</h2>
-          <div className="mt-4">
-            <BalanceChart data={serie} />
-          </div>
-        </div>
+          {recomendaciones.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted">
+              Todavia no hay nada para avisarte. A medida que cargues mas movimientos van a aparecer patrones aca.
+            </p>
+          ) : (
+            <ul className="space-y-2.5">
+              {recomendaciones.map((insight) => (
+                <InsightCard key={insight.id} insight={insight} />
+              ))}
+            </ul>
+          )}
+        </aside>
       </div>
     </>
   );
