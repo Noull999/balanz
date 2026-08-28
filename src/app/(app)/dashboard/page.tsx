@@ -108,6 +108,9 @@ export default async function DashboardPage() {
         </div>
 
         <aside className="space-y-5 lg:sticky lg:top-8 lg:self-start">
+          <AiSummary />
+          <AiAsk />
+
           <div>
             <h2 className="text-sm font-medium text-muted">Recomendaciones</h2>
             {recomendaciones.length === 0 ? (
@@ -122,9 +125,6 @@ export default async function DashboardPage() {
               </ul>
             )}
           </div>
-
-          <AiSummary />
-          <AiAsk />
         </aside>
       </div>
     </>
