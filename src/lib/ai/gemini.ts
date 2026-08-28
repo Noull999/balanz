@@ -6,7 +6,7 @@
  * calcularon, no decide nada por su cuenta.
  */
 
-const MODELO = "gemini-2.5-flash";
+const MODELO = "gemini-3.6-flash";
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODELO}:generateContent`;
 
 export type ResultadoIA = { ok: true; texto: string } | { ok: false; error: string };
@@ -27,7 +27,15 @@ export async function generarTexto(prompt: string): Promise<ResultadoIA> {
       },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 260 },
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 400,
+          // "minimal" evita que el modelo gaste la mayoria de los tokens
+          // razonando puertas adentro antes de escribir la respuesta (con el
+          // nivel por defecto, un resumen de 4 frases se cortaba a mitad de
+          // camino porque el presupuesto de tokens se iba en el "pensamiento").
+          thinkingConfig: { thinkingLevel: "minimal" },
+        },
       }),
       // El resumen es on-demand (el usuario aprieta un boton), no tiene sentido
       // dejarlo colgado si Gemini no contesta rapido.

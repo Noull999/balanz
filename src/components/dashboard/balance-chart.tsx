@@ -24,7 +24,7 @@ const NOMBRES: Record<string, string> = {
 
 export function BalanceChart({ data }: { data: Punto[] }) {
   return (
-    <div className="h-[280px] w-full">
+    <div className="h-[280px] w-full min-w-0">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={data} margin={{ left: 8, right: 8 }}>
           <CartesianGrid vertical={false} stroke="var(--border)" />

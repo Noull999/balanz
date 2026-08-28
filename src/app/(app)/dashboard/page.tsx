@@ -65,9 +65,9 @@ export default async function DashboardPage() {
       </h1>
       <p className="mt-1 text-muted">Asi viene este mes.</p>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="min-w-0 space-y-6">
-          <div className="grid gap-4 sm:grid-cols-3">
+      <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
+        <div className="min-w-0 space-y-8">
+          <div className="grid gap-5 sm:grid-cols-3">
             <StatTile label="Ingresos del mes" value={formatMoney(resumen.incomeCents)} tone="positive" />
             <StatTile label="Gastos del mes" value={formatMoney(resumen.expenseCents)} tone="negative" />
             <StatTile
@@ -79,36 +79,36 @@ export default async function DashboardPage() {
 
           <AiSummary />
 
-          <div className="grid gap-4 xl:grid-cols-2">
-            <div className="rounded-xl border border-border bg-surface p-5">
+          <div className="grid gap-5 xl:grid-cols-2">
+            <div className="min-w-0 rounded-xl border border-border bg-surface p-6">
               <h2 className="text-sm font-medium">Gasto por categoria este mes</h2>
-              <div className="mt-4">
+              <div className="mt-5">
                 <CategoryPieChart data={categorias} />
               </div>
             </div>
 
-            <div className="rounded-xl border border-border bg-surface p-5">
+            <div className="min-w-0 rounded-xl border border-border bg-surface p-6">
               <h2 className="text-sm font-medium">Ultimos {MESES_HISTORIAL} meses</h2>
-              <div className="mt-4">
+              <div className="mt-5">
                 <BalanceChart data={serie} />
               </div>
             </div>
           </div>
 
-          <div className="rounded-xl border border-border bg-surface p-5">
+          <div className="rounded-xl border border-border bg-surface p-6">
             <h2 className="text-sm font-medium">Ritmo de gasto diario</h2>
             <p className="mt-1 text-sm text-muted">
               {presupuestoDiarioCents > 0
                 ? `Compara cada dia contra ${formatMoney(presupuestoDiarioCents)}, tu presupuesto mensual repartido entre los dias del mes.`
                 : "Definí presupuestos para ver que dias te fuiste de ritmo."}
             </p>
-            <div className="mt-4">
+            <div className="mt-5">
               <SpendingCalendar dias={gastoDiario} presupuestoDiarioCents={presupuestoDiarioCents} hoy={hoy} />
             </div>
           </div>
         </div>
 
-        <aside className="space-y-3 lg:sticky lg:top-6 lg:self-start">
+        <aside className="space-y-4 lg:sticky lg:top-8 lg:self-start">
           <h2 className="text-sm font-medium text-muted">Recomendaciones</h2>
           {recomendaciones.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted">

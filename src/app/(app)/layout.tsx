@@ -16,7 +16,7 @@ export default async function AppLayout({
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <header className="border-b border-border bg-surface">
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-2 px-3 sm:gap-6 sm:px-6">
+        <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-2 px-3 sm:gap-6 sm:px-6">
           <Link href="/dashboard" className="flex shrink-0 items-center gap-2 font-semibold">
             <ScaleIcon className="size-5 text-brand" strokeWidth={1.75} />
             <span className="hidden sm:inline">Balanz</span>
@@ -73,7 +73,7 @@ export default async function AppLayout({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">{children}</main>
+      <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">{children}</main>
     </div>
   );
 }
