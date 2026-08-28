@@ -1,27 +1,28 @@
 "use server";
 
-import { generarTexto, type ResultadoIA } from "@/lib/ai/gemini";
+import { generarJSON, generarTexto, type ResultadoIA, type ResultadoJSON } from "@/lib/ai/gemini";
 import { requireUser } from "@/lib/auth";
-import { todayInput, toUtcDay } from "@/lib/date";
+import { addUtcMonths, startOfUtcMonth, todayInput, toUtcDay } from "@/lib/date";
 import { gastoPorCategoria, resumenMensual } from "@/lib/insights";
 import { formatMoney } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { generarRecomendaciones } from "@/lib/recommendations";
 
 /**
- * Arma el prompt a partir de lo que YA calcularon las funciones puras de
- * insights.ts y recommendations.ts - la IA no ve movimientos sueltos, ve los
- * mismos numeros redondeados que se muestran en el dashboard. Asi no puede
- * inventar un monto que no este en la pantalla.
+ * Arma el bloque de datos que le llega a la IA en texto plano, a partir de lo
+ * que YA calcularon las funciones puras de insights.ts y recommendations.ts.
+ * La IA nunca ve movimientos sueltos, solo estos numeros ya redondeados -
+ * asi no puede inventar un monto o una categoria que no esten en esta lista.
+ * Lo comparten el resumen del mes y las preguntas libres para no repetir las
+ * mismas consultas a la base dos veces.
  */
-export async function generarResumenMensual(): Promise<ResultadoIA> {
-  const user = await requireUser();
+async function armarContexto(userId: string) {
   const hoy = toUtcDay(todayInput());
-  const desde = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() - 3, 1));
+  const desde = startOfUtcMonth(addUtcMonths(hoy, -3));
 
   const [transacciones, presupuestos] = await Promise.all([
     prisma.transaction.findMany({
-      where: { userId: user.id, date: { gte: desde } },
+      where: { userId, date: { gte: desde } },
       select: {
         id: true,
         amountCents: true,
@@ -33,7 +34,7 @@ export async function generarResumenMensual(): Promise<ResultadoIA> {
       },
     }),
     prisma.budget.findMany({
-      where: { userId: user.id },
+      where: { userId },
       select: {
         categoryId: true,
         monthlyLimitCents: true,
@@ -43,34 +44,90 @@ export async function generarResumenMensual(): Promise<ResultadoIA> {
   ]);
 
   const resumen = resumenMensual(transacciones, hoy);
-  const categorias = gastoPorCategoria(transacciones, hoy).slice(0, 4);
+  const categorias = gastoPorCategoria(transacciones, hoy);
   const recomendaciones = generarRecomendaciones(transacciones, presupuestos, hoy);
+
+  const lineas = [
+    `Ingresos del mes: ${formatMoney(resumen.incomeCents)}.`,
+    `Gastos del mes: ${formatMoney(resumen.expenseCents)}.`,
+    `Balance del mes: ${formatMoney(resumen.balanceCents)}.`,
+    categorias.length > 0
+      ? `Gasto por categoria este mes: ${categorias.map((c) => `${c.name} (${formatMoney(c.amountCents)})`).join(", ")}.`
+      : "Todavia no hay gastos categorizados este mes.",
+    presupuestos.length > 0
+      ? `Presupuestos definidos: ${presupuestos.map((p) => `${p.category.name} hasta ${formatMoney(p.monthlyLimitCents)} por mes`).join(", ")}.`
+      : "No hay presupuestos definidos.",
+    recomendaciones.length > 0
+      ? `Alertas que ya detecto el sistema: ${recomendaciones.map((r) => r.mensaje).join(" ")}`
+      : "No hay alertas activas este mes.",
+  ].join("\n");
+
+  return { resumen, lineas };
+}
+
+export type ResumenConTips = { resumen: string; tips: string[] };
+
+const ESQUEMA_RESUMEN = {
+  type: "OBJECT",
+  properties: {
+    resumen: { type: "STRING", description: "Resumen del mes en 2-3 frases" },
+    tips: {
+      type: "ARRAY",
+      items: { type: "STRING" },
+      description: "2 o 3 acciones concretas y accionables para mejorar",
+    },
+  },
+  required: ["resumen", "tips"],
+};
+
+export async function generarResumenMensual(): Promise<ResultadoJSON<ResumenConTips>> {
+  const user = await requireUser();
+  const { resumen, lineas } = await armarContexto(user.id);
 
   if (resumen.incomeCents === 0 && resumen.expenseCents === 0) {
     return { ok: false, error: "Todavia no hay movimientos este mes para resumir." };
   }
 
-  const lineas = [
-    `Ingresos del mes: ${formatMoney(resumen.incomeCents)}.`,
-    `Gastos del mes: ${formatMoney(resumen.expenseCents)}.`,
-    `Balance: ${formatMoney(resumen.balanceCents)}.`,
-    categorias.length > 0
-      ? `Categorias con mas gasto: ${categorias.map((c) => `${c.name} (${formatMoney(c.amountCents)})`).join(", ")}.`
-      : null,
-    recomendaciones.length > 0
-      ? `Alertas que ya detecto el sistema: ${recomendaciones.map((r) => r.mensaje).join(" ")}`
-      : "No hay alertas activas este mes.",
-  ]
-    .filter(Boolean)
-    .join("\n");
-
   const prompt = `Eres el asistente financiero de Balanz, una app de control de gastos personales.
-Con estos datos reales del mes (ya calculados, no inventes otros numeros ni otras categorias):
+Con estos datos reales (ya calculados, no inventes otros numeros ni otras categorias):
 
 ${lineas}
 
-Escribe un resumen corto (maximo 4 frases, sin listas ni markdown) en espanol neutro, tuteando de "tu",
-tono cercano y directo, sin exagerar ni sonar alarmista. Menciona el dato mas relevante primero.`;
+Devuelve un resumen del mes (2-3 frases, el dato mas relevante primero, sin markdown) y 2 o 3 tips
+concretos y accionables para mejorar (nada generico tipo "gasta menos", numeros o categorias
+puntuales de la lista de arriba). Todo en espanol neutro, tuteando de "tu", tono cercano y directo,
+sin exagerar ni sonar alarmista.`;
+
+  return generarJSON<ResumenConTips>(prompt, ESQUEMA_RESUMEN);
+}
+
+const LARGO_MAXIMO_PREGUNTA = 300;
+
+/**
+ * "Pregúntale a tus finanzas": la pregunta la escribe el usuario, pero la
+ * respuesta esta obligada a basarse solo en armarContexto() de arriba - el
+ * prompt le pide explicitamente decir que no tiene el dato en vez de
+ * inventar algo fuera de esa lista.
+ */
+export async function preguntarIA(pregunta: string): Promise<ResultadoIA> {
+  const user = await requireUser();
+  const preguntaLimpia = pregunta.trim().slice(0, LARGO_MAXIMO_PREGUNTA);
+
+  if (!preguntaLimpia) {
+    return { ok: false, error: "Escribe una pregunta." };
+  }
+
+  const { lineas } = await armarContexto(user.id);
+
+  const prompt = `Eres el asistente financiero de Balanz, una app de control de gastos personales.
+Estos son los unicos datos reales que tienes disponibles (no inventes otros numeros, categorias ni meses):
+
+${lineas}
+
+Pregunta del usuario: "${preguntaLimpia}"
+
+Responde en espanol neutro, tuteando de "tu", maximo 3 frases, sin markdown. Si la pregunta no se
+puede responder solo con los datos de arriba, dilo con claridad en vez de inventar una respuesta.`;
 
   return generarTexto(prompt);
 }

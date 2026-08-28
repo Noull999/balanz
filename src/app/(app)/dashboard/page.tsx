@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { AiAsk } from "@/components/dashboard/ai-ask";
 import { AiSummary } from "@/components/dashboard/ai-summary";
 import { BalanceChart } from "@/components/dashboard/balance-chart";
 import { CategoryPieChart } from "@/components/dashboard/category-pie-chart";
@@ -78,6 +79,8 @@ export default async function DashboardPage() {
           </div>
 
           <AiSummary />
+
+          <AiAsk />
 
           <div className="grid gap-5 xl:grid-cols-2">
             <div className="min-w-0 rounded-xl border border-border bg-surface p-6">

@@ -1,13 +1,13 @@
 "use client";
 
-import { Loader, Sparkles } from "lucide-react";
+import { Lightbulb, Loader, Sparkles } from "lucide-react";
 import { useState, useTransition } from "react";
 
-import { generarResumenMensual } from "@/lib/actions/ai";
+import { generarResumenMensual, type ResumenConTips } from "@/lib/actions/ai";
 
 type Estado =
   | { tipo: "inicial" }
-  | { tipo: "exito"; texto: string }
+  | { tipo: "exito"; datos: ResumenConTips }
   | { tipo: "error"; mensaje: string };
 
 export function AiSummary() {
@@ -18,7 +18,7 @@ export function AiSummary() {
     startTransition(async () => {
       const resultado = await generarResumenMensual();
       setEstado(
-        resultado.ok ? { tipo: "exito", texto: resultado.texto } : { tipo: "error", mensaje: resultado.error },
+        resultado.ok ? { tipo: "exito", datos: resultado.datos } : { tipo: "error", mensaje: resultado.error },
       );
     });
   }
@@ -45,13 +45,28 @@ export function AiSummary() {
       <div className="mt-3 text-sm">
         {estado.tipo === "inicial" && !pending && (
           <p className="text-muted">
-            Un resumen del mes escrito por Gemini a partir de los mismos numeros que ves abajo — la IA solo lo
-            redacta, no calcula nada por su cuenta.
+            Un resumen del mes y un par de tips escritos por Gemini a partir de los mismos numeros que ves abajo
+            — la IA solo los redacta, no calcula nada por su cuenta.
           </p>
         )}
         {pending && <p className="text-muted">Pensando...</p>}
-        {estado.tipo === "exito" && <p className="text-pretty">{estado.texto}</p>}
         {estado.tipo === "error" && <p className="text-negative">{estado.mensaje}</p>}
+        {estado.tipo === "exito" && (
+          <div className="space-y-3">
+            <p className="text-pretty">{estado.datos.resumen}</p>
+
+            {estado.datos.tips.length > 0 && (
+              <ul className="space-y-1.5">
+                {estado.datos.tips.map((tip, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-brand" aria-hidden />
+                    <span className="text-pretty">{tip}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
