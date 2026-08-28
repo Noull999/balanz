@@ -65,3 +65,7 @@ export const categoriaSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/, "Elegi un color"),
   icon: z.string().min(1, "Elegi un icono"),
 });
+
+export const presupuestoSchema = z.object({
+  monthlyLimit: z.string().min(1, "Escribi un monto"),
+});

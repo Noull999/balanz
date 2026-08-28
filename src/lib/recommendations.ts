@@ -3,6 +3,9 @@ import { resumenMensual, type TransaccionInsight } from "@/lib/insights";
 
 export type Severidad = "info" | "warning" | "danger";
 
+/** A partir de que porcentaje del presupuesto se avisa. Compartido con la barra de progreso. */
+export const UMBRAL_ALERTA_PRESUPUESTO = 0.8;
+
 export type Insight = {
   id: string;
   severidad: Severidad;
@@ -158,7 +161,7 @@ export function reglaPresupuesto(
 
     if (presupuesto.monthlyLimitCents <= 0) continue;
     const ratio = expenseCents / presupuesto.monthlyLimitCents;
-    if (ratio < 0.8) continue;
+    if (ratio < UMBRAL_ALERTA_PRESUPUESTO) continue;
 
     const nombre = presupuesto.category.name;
 
