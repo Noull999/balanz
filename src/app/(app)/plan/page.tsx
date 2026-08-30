@@ -1,0 +1,82 @@
+import { Target } from "lucide-react";
+import type { Metadata } from "next";
+import Link from "next/link";
+
+import { PlanDistribucionForm } from "@/components/plan/plan-distribucion-form";
+import { requireUser } from "@/lib/auth";
+import { addUtcMonths, startOfUtcMonth, todayInput, toUtcDay } from "@/lib/date";
+import { promedioGastoPorCategoria, resumenMensual } from "@/lib/insights";
+import { bucketSugerido } from "@/lib/plan-distribucion";
+import { prisma } from "@/lib/prisma";
+
+export const metadata: Metadata = { title: "Plan de distribucion" };
+
+const MESES_HISTORIAL = 4;
+
+export default async function PlanPage() {
+  const user = await requireUser();
+  const hoy = toUtcDay(todayInput());
+  const desde = startOfUtcMonth(addUtcMonths(hoy, -(MESES_HISTORIAL - 1)));
+
+  const [categorias, transacciones] = await Promise.all([
+    prisma.category.findMany({
+      where: { userId: user.id, kind: "EXPENSE" },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, color: true, icon: true },
+    }),
+    prisma.transaction.findMany({
+      where: { userId: user.id, date: { gte: desde } },
+      select: {
+        id: true,
+        amountCents: true,
+        type: true,
+        description: true,
+        date: true,
+        categoryId: true,
+        category: { select: { id: true, name: true, color: true } },
+      },
+    }),
+  ]);
+
+  const ingresoDelMes = resumenMensual(transacciones, hoy).incomeCents;
+  const promedios = promedioGastoPorCategoria(transacciones, hoy, MESES_HISTORIAL - 1);
+
+  const categoriasPlan = categorias.map((categoria) => ({
+    categoryId: categoria.id,
+    name: categoria.name,
+    color: categoria.color,
+    icon: categoria.icon,
+    bucket: bucketSugerido(categoria.name),
+    promedioCents: promedios.get(categoria.id) ?? 0,
+  }));
+
+  return (
+    <>
+      <div className="flex items-center gap-2.5">
+        <Target className="size-6 text-brand" aria-hidden />
+        <h1 className="text-2xl font-semibold tracking-tight">Plan de distribucion</h1>
+      </div>
+      <p className="mt-1 text-sm text-muted">
+        Coloca tu ingreso mensual y Balanz te sugiere cuanto destinar a lo esencial, a tu ocio y al ahorro,
+        repartido entre tus categorias reales. Podes ajustar todo a mano antes de aplicarlo.
+      </p>
+
+      {categoriasPlan.length === 0 ? (
+        <div className="mt-8 rounded-xl border border-dashed border-border px-6 py-14 text-center">
+          <Target className="mx-auto size-8 text-muted" strokeWidth={1.5} aria-hidden />
+          <p className="mt-4 font-medium">No tienes categorias de gasto todavia</p>
+          <Link
+            href="/categorias/nueva"
+            className="mt-6 inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-strong"
+          >
+            Crear una categoria
+          </Link>
+        </div>
+      ) : (
+        <div className="mt-6">
+          <PlanDistribucionForm categoriasIniciales={categoriasPlan} ingresoInicialCents={ingresoDelMes} />
+        </div>
+      )}
+    </>
+  );
+}
