@@ -1,4 +1,4 @@
-import { startOfNextUtcMonth, startOfUtcMonth } from "@/lib/date";
+import { addUtcMonths, startOfNextUtcMonth, startOfUtcMonth } from "@/lib/date";
 
 /**
  * Forma minima de transaccion que necesitan las funciones de este archivo y las
@@ -105,6 +105,32 @@ export function gastoPorDia(
     date: new Date(desde.getTime() + i * 86_400_000),
     amountCents,
   }));
+}
+
+/**
+ * Promedio de gasto mensual por categoria en los ultimos `meses` (sin contar
+ * el actual). Es el habito real que usa el plan de distribucion para repartir
+ * cada balde proporcional a lo que la persona ya gasta, no parejo a ciegas.
+ */
+export function promedioGastoPorCategoria(
+  transacciones: TransaccionInsight[],
+  hoy: Date,
+  meses = 3,
+): Map<string, number> {
+  const totales = new Map<string, number>();
+
+  for (let i = 1; i <= meses; i++) {
+    const mesAnterior = addUtcMonths(hoy, -i);
+    for (const categoria of gastoPorCategoria(transacciones, mesAnterior)) {
+      totales.set(categoria.categoryId, (totales.get(categoria.categoryId) ?? 0) + categoria.amountCents);
+    }
+  }
+
+  const promedios = new Map<string, number>();
+  for (const [categoryId, total] of totales) {
+    promedios.set(categoryId, Math.round(total / meses));
+  }
+  return promedios;
 }
 
 export type PuntoMensual = {

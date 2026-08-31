@@ -1,4 +1,4 @@
-import { ArrowLeftRight, LayoutDashboard, LogOut, PiggyBank, ScaleIcon, Tags } from "lucide-react";
+import { ArrowLeftRight, LayoutDashboard, LogOut, PiggyBank, ScaleIcon, Tags, Target } from "lucide-react";
 import Link from "next/link";
 
 import { salir } from "@/lib/actions/auth";
@@ -54,6 +54,14 @@ export default async function AppLayout({
             >
               <PiggyBank className="size-4" />
               <span className="hidden sm:inline">Presupuestos</span>
+            </Link>
+            <Link
+              href="/plan"
+              title="Plan de distribucion"
+              className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-muted transition hover:bg-background hover:text-foreground sm:px-2.5"
+            >
+              <Target className="size-4" />
+              <span className="hidden sm:inline">Plan</span>
             </Link>
           </nav>
 

@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { addUtcMonths, startOfUtcMonth, todayInput, toUtcDay } from "@/lib/date";
 import { gastoPorCategoria, resumenMensual } from "@/lib/insights";
 import { formatMoney } from "@/lib/money";
+import type { PlanDistribucion } from "@/lib/plan-distribucion";
 import { prisma } from "@/lib/prisma";
 import { generarRecomendaciones } from "@/lib/recommendations";
 
@@ -128,6 +129,39 @@ Pregunta del usuario: "${preguntaLimpia}"
 
 Responde en espanol neutro, tuteando de "tu", maximo 3 frases, sin markdown. Si la pregunta no se
 puede responder solo con los datos de arriba, dilo con claridad en vez de inventar una respuesta.`;
+
+  return generarTexto(prompt);
+}
+
+/**
+ * Redacta en palabras el plan de distribucion que ya calculo calcularPlan()
+ * (src/lib/plan-distribucion.ts): la IA recibe los montos ya hechos y solo
+ * explica el porque, nunca inventa ni ajusta un numero por su cuenta.
+ */
+export async function explicarPlanDistribucion(plan: PlanDistribucion): Promise<ResultadoIA> {
+  await requireUser();
+
+  const lineas = [
+    `Ingreso mensual: ${formatMoney(plan.incomeCents)}.`,
+    `Gastos esenciales: ${formatMoney(plan.esencialCents)}.`,
+    `Ocio: ${formatMoney(plan.ocioCents)}.`,
+    `Ahorro: ${formatMoney(plan.ahorroCents)}.`,
+    plan.asignaciones.length > 0
+      ? `Reparto por categoria: ${plan.asignaciones
+          .map((a) => `${a.name} (${a.bucket === "OCIO" ? "ocio" : "esencial"}, ${formatMoney(a.monthlyLimitCents)})`)
+          .join(", ")}.`
+      : "Todavia no hay categorias de gasto para repartir.",
+  ].join("\n");
+
+  const prompt = `Eres el asistente financiero de Balanz, una app de control de gastos personales.
+Un usuario acaba de armar este plan de distribucion de su ingreso mensual (los numeros ya estan
+calculados, no los cambies ni inventes otros):
+
+${lineas}
+
+Explicale en 2-3 frases por que este reparto le permite ahorrar sin resignar del todo su ocio, y
+anima a aplicarlo o ajustarlo si algo no calza con su realidad. Espanol neutro, tuteando de "tu",
+sin markdown, tono cercano y directo.`;
 
   return generarTexto(prompt);
 }

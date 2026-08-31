@@ -69,3 +69,15 @@ export const categoriaSchema = z.object({
 export const presupuestoSchema = z.object({
   monthlyLimit: z.string().min(1, "Escribe un monto"),
 });
+
+export const planDistribucionSchema = z.object({
+  income: z.string().min(1, "Escribe tu ingreso mensual"),
+  esencial: z.coerce.number().min(0).max(100),
+  ocio: z.coerce.number().min(0).max(100),
+  ahorro: z.coerce.number().min(0).max(100),
+});
+
+export const asignacionSchema = z.object({
+  categoryId: z.string().trim().min(1),
+  monthlyLimitCents: z.coerce.number().int().min(0),
+});

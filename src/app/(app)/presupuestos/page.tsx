@@ -1,4 +1,4 @@
-import { PiggyBank, Trash2 } from "lucide-react";
+import { PiggyBank, Target, Trash2 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -53,11 +53,21 @@ export default async function PresupuestosPage() {
 
   return (
     <>
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Presupuestos</h1>
-        <p className="mt-1 text-sm text-muted">
-          Limite mensual por categoria de gasto. Balanz avisa cuando llegas al 80%.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Presupuestos</h1>
+          <p className="mt-1 text-sm text-muted">
+            Limite mensual por categoria de gasto. Balanz avisa cuando llegas al 80%.
+          </p>
+        </div>
+
+        <Link
+          href="/plan"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand/40 px-3 py-2 text-sm font-medium text-brand transition hover:bg-brand/10"
+        >
+          <Target className="size-4" aria-hidden />
+          Armar plan a partir de mi ingreso
+        </Link>
       </div>
 
       {categorias.length === 0 ? (
