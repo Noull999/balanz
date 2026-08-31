@@ -18,7 +18,13 @@ export function centsToInput(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
-/** "1.250,50" | "1250.50" -> 125050. Devuelve null si no es un numero valido. */
+// amountCents se guarda en una columna Int de Postgres (32 bits): el limite
+// real es 2.147.483.647. Frenarlo aca, en el unico lugar que traduce texto a
+// centavos, evita que cualquier form (movimientos, presupuestos, deuda) tenga
+// que acordarse de chequearlo por separado.
+const MAX_CENTS = 2_147_483_647;
+
+/** "1.250,50" | "1250.50" -> 125050. Devuelve null si no es un numero valido o no entra en la columna. */
 export function inputToCents(value: string): number | null {
   const normalized = value
     .trim()
@@ -32,7 +38,10 @@ export function inputToCents(value: string): number | null {
   const amount = Number(normalized);
   if (!Number.isFinite(amount)) return null;
 
-  return Math.round(amount * 100);
+  const cents = Math.round(amount * 100);
+  if (Math.abs(cents) > MAX_CENTS) return null;
+
+  return cents;
 }
 
 /** Variacion porcentual entre dos montos. null si no hay base con que comparar. */

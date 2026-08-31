@@ -2,6 +2,7 @@ import { Target } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { DebtCard } from "@/components/plan/debt-card";
 import { PlanDistribucionForm } from "@/components/plan/plan-distribucion-form";
 import { requireUser } from "@/lib/auth";
 import { addUtcMonths, startOfUtcMonth, todayInput, toUtcDay } from "@/lib/date";
@@ -18,7 +19,7 @@ export default async function PlanPage() {
   const hoy = toUtcDay(todayInput());
   const desde = startOfUtcMonth(addUtcMonths(hoy, -(MESES_HISTORIAL - 1)));
 
-  const [categorias, transacciones] = await Promise.all([
+  const [categorias, transacciones, deuda] = await Promise.all([
     prisma.category.findMany({
       where: { userId: user.id, kind: "EXPENSE" },
       orderBy: { name: "asc" },
@@ -35,6 +36,10 @@ export default async function PlanPage() {
         categoryId: true,
         category: { select: { id: true, name: true, color: true } },
       },
+    }),
+    prisma.debt.findUnique({
+      where: { userId: user.id },
+      select: { name: true, originalCents: true, remainingCents: true },
     }),
   ]);
 
@@ -73,7 +78,8 @@ export default async function PlanPage() {
           </Link>
         </div>
       ) : (
-        <div className="mt-6">
+        <div className="mt-6 space-y-6">
+          <DebtCard deuda={deuda} categorias={categorias} />
           <PlanDistribucionForm categoriasIniciales={categoriasPlan} ingresoInicialCents={ingresoDelMes} />
         </div>
       )}

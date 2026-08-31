@@ -81,3 +81,18 @@ export const asignacionSchema = z.object({
   categoryId: z.string().trim().min(1),
   monthlyLimitCents: z.coerce.number().int().min(0),
 });
+
+export const deudaSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .max(60, "Ese nombre es demasiado largo")
+    .optional()
+    .transform((v) => (v === "" ? undefined : v)),
+  originalAmount: z.string().min(1, "Escribe el monto total"),
+});
+
+export const pagoDeudaSchema = z.object({
+  amount: z.string().min(1, "Escribe un monto"),
+  categoryId: z.string().trim().min(1, "Elige una categoria"),
+});
