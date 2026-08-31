@@ -46,11 +46,6 @@ export function PlanConDeuda({
     void guardarConfiguracionPlan({ deudaPagoPlaneadoCents: inputToCents(montoDeuda) ?? 0 });
   }
 
-  function limpiarMontoDeuda() {
-    setMontoDeuda("");
-    void guardarConfiguracionPlan({ deudaPagoPlaneadoCents: 0 });
-  }
-
   return (
     <div className="space-y-6">
       <DebtCard
@@ -59,7 +54,6 @@ export function PlanConDeuda({
         montoDestinado={montoDeuda}
         onMontoDestinadoChange={setMontoDeuda}
         onMontoDestinadoBlur={guardarMontoDeuda}
-        onPagoRegistrado={limpiarMontoDeuda}
       />
       <PlanDistribucionForm
         categoriasIniciales={categoriasPlan}

@@ -61,11 +61,14 @@ function repartirBalde(categorias: CategoriaPlan[], totalBucketCents: number): A
 
   return categorias.map((c) => {
     const proporcion = sumaHistorial > 0 ? c.promedioCents / sumaHistorial : 1 / categorias.length;
+    // Redondea al peso (100 centavos), no al centavo: sin esto el reparto
+    // proporcional daba limites tipo "$94.494,26" - CLP no usa centavos.
+    const centavos = Math.round((totalBucketCents * proporcion) / 100) * 100;
     return {
       categoryId: c.categoryId,
       name: c.name,
       bucket: c.bucket,
-      monthlyLimitCents: Math.round(totalBucketCents * proporcion),
+      monthlyLimitCents: centavos,
     };
   });
 }

@@ -20,7 +20,6 @@ export function DebtCard({
   montoDestinado,
   onMontoDestinadoChange,
   onMontoDestinadoBlur,
-  onPagoRegistrado,
 }: {
   deuda: DeudaActual;
   categorias: CategoriaGasto[];
@@ -29,8 +28,6 @@ export function DebtCard({
   onMontoDestinadoChange: (valor: string) => void;
   /** Se dispara al salir del input (o al click de un chip de sugerencia) - ahi se persiste. */
   onMontoDestinadoBlur: () => void;
-  /** Se dispara cuando un pago se registra de verdad, para limpiar y persistir el monto planeado en 0. */
-  onPagoRegistrado: () => void;
 }) {
   const [editando, setEditando] = useState(deuda === null);
 
@@ -85,7 +82,6 @@ export function DebtCard({
             monto={montoDestinado}
             onMontoChange={onMontoDestinadoChange}
             onMontoBlur={onMontoDestinadoBlur}
-            onPagoRegistrado={onPagoRegistrado}
           />
         </div>
       )}
@@ -161,14 +157,12 @@ function FormularioPago({
   monto,
   onMontoChange,
   onMontoBlur,
-  onPagoRegistrado,
 }: {
   categorias: CategoriaGasto[];
   remainingCents: number;
   monto: string;
   onMontoChange: (valor: string) => void;
   onMontoBlur: () => void;
-  onPagoRegistrado: () => void;
 }) {
   const [categoryId, setCategoryId] = useState("");
   const [pending, setPending] = useState(false);
@@ -186,8 +180,10 @@ function FormularioPago({
     setResultado(null);
     const r = await registrarPagoDeuda(formData);
     if (r.ok) {
+      // El monto NO se limpia: ya se destino a la deuda, asi que sigue
+      // restando del reparto de esencial/ocio/ahorro hasta que el usuario
+      // lo cambie a mano.
       setResultado({ ok: true, mensaje: "Pago registrado." });
-      onPagoRegistrado(); // ya se pago, deja de descontarse del reparto
     } else {
       setResultado({ ok: false, mensaje: r.error });
     }
