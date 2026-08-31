@@ -5,12 +5,14 @@ import { AiSummary } from "@/components/dashboard/ai-summary";
 import { BalanceChart } from "@/components/dashboard/balance-chart";
 import { CategoryPieChart } from "@/components/dashboard/category-pie-chart";
 import { InsightCard } from "@/components/dashboard/insight-card";
+import { PlanSummaryCard } from "@/components/dashboard/plan-summary-card";
 import { SpendingCalendar } from "@/components/dashboard/spending-calendar";
 import { StatTile } from "@/components/dashboard/stat-tile";
 import { requireUser } from "@/lib/auth";
 import { addUtcMonths, daysInUtcMonth, startOfUtcMonth, todayInput, toUtcDay } from "@/lib/date";
 import { gastoPorCategoria, gastoPorDia, resumenMensual, serieMensual } from "@/lib/insights";
 import { formatMoney } from "@/lib/money";
+import { calcularPlan, bucketSugerido, PORCENTAJES_DEFECTO } from "@/lib/plan-distribucion";
 import { prisma } from "@/lib/prisma";
 import { generarRecomendaciones } from "@/lib/recommendations";
 
@@ -26,7 +28,7 @@ export default async function DashboardPage() {
   const hoy = toUtcDay(todayInput());
   const desde = startOfUtcMonth(addUtcMonths(hoy, -(MESES_HISTORIAL - 1)));
 
-  const [transacciones, presupuestos] = await Promise.all([
+  const [transacciones, presupuestos, categoriasBucket, configuracion] = await Promise.all([
     prisma.transaction.findMany({
       where: { userId: user.id, date: { gte: desde } },
       orderBy: { date: "asc" },
@@ -48,6 +50,11 @@ export default async function DashboardPage() {
         category: { select: { name: true } },
       },
     }),
+    prisma.category.findMany({
+      where: { userId: user.id, kind: "EXPENSE" },
+      select: { id: true, name: true, planBucket: true },
+    }),
+    prisma.planSettings.findUnique({ where: { userId: user.id } }),
   ]);
 
   const resumen = resumenMensual(transacciones, hoy);
@@ -58,6 +65,30 @@ export default async function DashboardPage() {
   const gastoDiario = gastoPorDia(transacciones, hoy);
   const presupuestoTotalCents = presupuestos.reduce((total, p) => total + p.monthlyLimitCents, 0);
   const presupuestoDiarioCents = Math.round(presupuestoTotalCents / daysInUtcMonth(hoy));
+
+  // Mismo calculo que /plan (misma fuente: PlanSettings), asi el resumen del
+  // dashboard y la pantalla del plan nunca muestran targets distintos.
+  const ingresoPlanCents = configuracion?.incomeCents ?? resumen.incomeCents;
+  const descuentoDeudaCents = configuracion?.deudaPagoPlaneadoCents ?? 0;
+  const ingresoDisponiblePlanCents = Math.max(0, ingresoPlanCents - descuentoDeudaCents);
+  const porcentajesPlan = configuracion
+    ? {
+        esencial: configuracion.porcentajeEsencial,
+        ocio: configuracion.porcentajeOcio,
+        ahorro: configuracion.porcentajeAhorro,
+      }
+    : PORCENTAJES_DEFECTO;
+  const planTargets = calcularPlan(ingresoDisponiblePlanCents, [], porcentajesPlan);
+
+  const bucketPorCategoria = new Map(
+    categoriasBucket.map((c) => [c.id, c.planBucket ?? bucketSugerido(c.name)]),
+  );
+  let esencialGastadoCents = 0;
+  let ocioGastadoCents = 0;
+  for (const c of categorias) {
+    if ((bucketPorCategoria.get(c.categoryId) ?? "ESENCIAL") === "OCIO") ocioGastadoCents += c.amountCents;
+    else esencialGastadoCents += c.amountCents;
+  }
 
   return (
     <>
@@ -77,6 +108,15 @@ export default async function DashboardPage() {
               tone={resumen.balanceCents >= 0 ? "positive" : "negative"}
             />
           </div>
+
+          <PlanSummaryCard
+            esencialTargetCents={planTargets.esencialCents}
+            ocioTargetCents={planTargets.ocioCents}
+            ahorroTargetCents={planTargets.ahorroCents}
+            esencialGastadoCents={esencialGastadoCents}
+            ocioGastadoCents={ocioGastadoCents}
+            balanceRealCents={resumen.balanceCents}
+          />
 
           <div className="grid gap-5 xl:grid-cols-2">
             <div className="min-w-0 rounded-xl border border-border bg-surface p-6">
