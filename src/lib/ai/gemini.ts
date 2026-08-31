@@ -17,16 +17,18 @@ const THINKING_MINIMO = { thinkingLevel: "minimal" as const };
 
 type ResultadoCrudo = { ok: true; texto: string } | { ok: false; error: string };
 
-async function llamarGemini(
+/**
+ * Un solo intento. Separado de llamarGemini() porque el timeout es real y
+ * confirmado: probando el mismo prompt varias veces seguidas contra la API
+ * de Gemini, algunas tardan 3s y otras se cuelgan 15s+ sin devolver nada -
+ * intermitente del lado de Google, no un problema del prompt ni del codigo
+ * (se verifico con curl/node fuera de la app, mismo resultado inconsistente).
+ */
+async function intentarLlamada(
   prompt: string,
   generationConfig: Record<string, unknown>,
-): Promise<ResultadoCrudo> {
-  const apiKey = process.env.GEMINI_API_KEY;
-
-  if (!apiKey) {
-    return { ok: false, error: "Falta configurar GEMINI_API_KEY." };
-  }
-
+  apiKey: string,
+): Promise<{ ok: true; texto: string } | { ok: false; error: string; reintentable: boolean }> {
   try {
     const respuesta = await fetch(ENDPOINT, {
       method: "POST",
@@ -38,8 +40,6 @@ async function llamarGemini(
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig,
       }),
-      // Todo lo que llama a esta funcion es on-demand (el usuario aprieta un
-      // boton o manda una pregunta), no tiene sentido dejarlo colgado.
       signal: AbortSignal.timeout(15_000),
     });
 
@@ -48,23 +48,46 @@ async function llamarGemini(
       console.error("Gemini respondio con error:", respuesta.status, cuerpo);
 
       if (respuesta.status === 429) {
-        return { ok: false, error: "Se llego al limite gratuito de pedidos por ahora. Proba de nuevo en un rato." };
+        return {
+          ok: false,
+          reintentable: false,
+          error: "Se llego al limite gratuito de pedidos por ahora. Proba de nuevo en un rato.",
+        };
       }
-      return { ok: false, error: "No se pudo conectar con Gemini." };
+      // Errores 5xx de Google si son intermitentes, no un problema del pedido.
+      return { ok: false, reintentable: respuesta.status >= 500, error: "No se pudo conectar con Gemini." };
     }
 
     const datos = await respuesta.json();
     const texto: string | undefined = datos.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!texto) {
-      return { ok: false, error: "Gemini no devolvio texto." };
+      return { ok: false, reintentable: false, error: "Gemini no devolvio texto." };
     }
 
     return { ok: true, texto: texto.trim() };
   } catch (error) {
     console.error("Error llamando a Gemini:", error);
-    return { ok: false, error: "No se pudo conectar con Gemini." };
+    // Timeout de red: confirmado intermitente, vale la pena un segundo intento.
+    return { ok: false, reintentable: true, error: "No se pudo conectar con Gemini." };
   }
+}
+
+async function llamarGemini(
+  prompt: string,
+  generationConfig: Record<string, unknown>,
+): Promise<ResultadoCrudo> {
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    return { ok: false, error: "Falta configurar GEMINI_API_KEY." };
+  }
+
+  const primero = await intentarLlamada(prompt, generationConfig, apiKey);
+  if (primero.ok || !primero.reintentable) return primero;
+
+  console.error("Gemini fallo, reintentando una vez...");
+  return intentarLlamada(prompt, generationConfig, apiKey);
 }
 
 export type ResultadoIA = { ok: true; texto: string } | { ok: false; error: string };
