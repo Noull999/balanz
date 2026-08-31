@@ -42,7 +42,7 @@ export function PlanSummaryCard({
   ];
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-4">
+    <div className="rounded-xl border border-border bg-surface px-4 py-2.5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-1.5 text-xs font-medium text-muted">
           <Target className="size-3.5 text-brand" aria-hidden />
@@ -53,7 +53,7 @@ export function PlanSummaryCard({
         </Link>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-3">
+      <div className="mt-2 grid grid-cols-3 gap-3">
         {columnas.map((columna) => (
           <ColumnaPlan key={columna.label} {...columna} />
         ))}
@@ -67,13 +67,16 @@ function ColumnaPlan({ label, gastadoCents, targetCents, tono }: Columna) {
   const color = tono === "positive" ? "bg-positive" : ratio >= 1 ? "bg-negative" : ratio >= 0.8 ? "bg-warning" : "bg-brand";
 
   return (
-    <div className="min-w-0">
-      <p className="truncate text-xs text-muted">{label}</p>
-      <p className="truncate text-sm font-medium tabular-nums">
-        {formatMoney(gastadoCents)} <span className="text-xs font-normal text-muted">/ {formatMoney(targetCents)}</span>
-      </p>
-      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-background">
-        <div className={`h-full rounded-full transition-[width] ${color}`} style={{ width: `${Math.min(Math.max(ratio, 0), 1) * 100}%` }} />
+    <div className="min-w-0 flex items-center gap-2">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[11px] leading-tight text-muted">
+          {label}{" "}
+          <span className="tabular-nums text-foreground">{formatMoney(gastadoCents)}</span>
+          <span className="tabular-nums"> / {formatMoney(targetCents)}</span>
+        </p>
+        <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-background">
+          <div className={`h-full rounded-full transition-[width] ${color}`} style={{ width: `${Math.min(Math.max(ratio, 0), 1) * 100}%` }} />
+        </div>
       </div>
     </div>
   );
