@@ -5,24 +5,35 @@ import { useMemo, useState, useTransition } from "react";
 
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { explicarPlanDistribucion } from "@/lib/actions/ai";
-import { actualizarBucketCategoria, aplicarPlanDistribucion } from "@/lib/actions/plan";
+import { actualizarBucketCategoria, aplicarPlanDistribucion, guardarConfiguracionPlan } from "@/lib/actions/plan";
 import { centsToInput, formatMoney, inputToCents } from "@/lib/money";
-import { calcularPlan, PORCENTAJES_DEFECTO, type Bucket, type CategoriaPlan } from "@/lib/plan-distribucion";
+import {
+  calcularPlan,
+  PORCENTAJES_DEFECTO,
+  type Bucket,
+  type CategoriaPlan,
+  type Porcentajes,
+} from "@/lib/plan-distribucion";
 
 type CategoriaInicial = CategoriaPlan & { color: string; icon: string };
 
 export function PlanDistribucionForm({
   categoriasIniciales,
   ingresoInicialCents,
+  ingresoEsManual = false,
+  porcentajesIniciales,
   descuentoDeudaCents = 0,
 }: {
   categoriasIniciales: CategoriaInicial[];
   ingresoInicialCents: number;
+  /** true si ingresoInicialCents viene de lo que el usuario tipeo la ultima vez, no del ingreso real del mes. */
+  ingresoEsManual?: boolean;
+  porcentajesIniciales?: Porcentajes;
   /** Lo que se va a destinar a la deuda este mes (DebtCard) - se resta antes de repartir. */
   descuentoDeudaCents?: number;
 }) {
   const [income, setIncome] = useState(ingresoInicialCents > 0 ? centsToInput(ingresoInicialCents) : "");
-  const [porcentajes, setPorcentajes] = useState(PORCENTAJES_DEFECTO);
+  const [porcentajes, setPorcentajes] = useState(porcentajesIniciales ?? PORCENTAJES_DEFECTO);
   const [buckets, setBuckets] = useState<Record<string, Bucket>>(() =>
     Object.fromEntries(categoriasIniciales.map((c) => [c.categoryId, c.bucket])),
   );
@@ -72,13 +83,25 @@ export function PlanDistribucionForm({
 
   function actualizarPorcentaje(campo: keyof typeof porcentajes, valor: string) {
     const numero = Number(valor);
-    setPorcentajes((prev) => ({ ...prev, [campo]: Number.isFinite(numero) ? numero : 0 }));
+    const nuevos = { ...porcentajes, [campo]: Number.isFinite(numero) ? numero : 0 };
+    setPorcentajes(nuevos);
     setOverrides({});
+    void guardarConfiguracionPlan({
+      porcentajeEsencial: nuevos.esencial,
+      porcentajeOcio: nuevos.ocio,
+      porcentajeAhorro: nuevos.ahorro,
+    });
   }
 
   function actualizarIncome(valor: string) {
     setIncome(valor);
     setOverrides({});
+  }
+
+  function guardarIncome() {
+    // null borra el "modo manual": /plan vuelve a precargar el ingreso real
+    // del mes la proxima vez, en vez de quedar pegado a este numero para siempre.
+    void guardarConfiguracionPlan({ incomeCents: inputToCents(income) });
   }
 
   function actualizarBucket(categoryId: string, bucket: Bucket) {
@@ -135,11 +158,14 @@ export function PlanDistribucionForm({
             id="income"
             value={income}
             onChange={(e) => actualizarIncome(e.target.value)}
+            onBlur={guardarIncome}
             placeholder="Por ejemplo 800000"
             className="mt-1.5 block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/40"
           />
           <p className="mt-1.5 text-sm text-muted">
-            Se precarga con tus ingresos de este mes. Cambialo si esperas ganar otra cosa.
+            {ingresoEsManual
+              ? "Este es el monto que dejaste cargado. Borralo para volver a usar tu ingreso real del mes."
+              : "Se precarga con tus ingresos de este mes. Cambialo si esperas ganar otra cosa."}
           </p>
         </div>
 

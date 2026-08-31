@@ -31,6 +31,7 @@ model User {
   transactions Transaction[]
   budgets      Budget[]
   debt         Debt?
+  planSettings PlanSettings?
 }
 
 model Category {
@@ -108,6 +109,22 @@ model Debt {
   remainingCents Int
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Lo que el usuario tipeo en /plan la ultima vez, para que no se pierda al
+// recargar la pagina. incomeCents null = seguir usando el ingreso real del
+// mes en vez de un monto fijado a mano.
+model PlanSettings {
+  id                     String   @id @default(cuid())
+  userId                 String   @unique
+  incomeCents            Int?
+  porcentajeEsencial     Int      @default(50)
+  porcentajeOcio         Int      @default(30)
+  porcentajeAhorro       Int      @default(20)
+  deudaPagoPlaneadoCents Int      @default(0)
+  updatedAt              DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

@@ -19,12 +19,18 @@ export function DebtCard({
   categorias,
   montoDestinado,
   onMontoDestinadoChange,
+  onMontoDestinadoBlur,
+  onPagoRegistrado,
 }: {
   deuda: DeudaActual;
   categorias: CategoriaGasto[];
   /** Lo que se piensa pagar este mes, en texto de input - lo usa /plan para descontarlo del reparto. */
   montoDestinado: string;
   onMontoDestinadoChange: (valor: string) => void;
+  /** Se dispara al salir del input (o al click de un chip de sugerencia) - ahi se persiste. */
+  onMontoDestinadoBlur: () => void;
+  /** Se dispara cuando un pago se registra de verdad, para limpiar y persistir el monto planeado en 0. */
+  onPagoRegistrado: () => void;
 }) {
   const [editando, setEditando] = useState(deuda === null);
 
@@ -78,6 +84,8 @@ export function DebtCard({
             remainingCents={deuda!.remainingCents}
             monto={montoDestinado}
             onMontoChange={onMontoDestinadoChange}
+            onMontoBlur={onMontoDestinadoBlur}
+            onPagoRegistrado={onPagoRegistrado}
           />
         </div>
       )}
@@ -152,11 +160,15 @@ function FormularioPago({
   remainingCents,
   monto,
   onMontoChange,
+  onMontoBlur,
+  onPagoRegistrado,
 }: {
   categorias: CategoriaGasto[];
   remainingCents: number;
   monto: string;
   onMontoChange: (valor: string) => void;
+  onMontoBlur: () => void;
+  onPagoRegistrado: () => void;
 }) {
   const [categoryId, setCategoryId] = useState("");
   const [pending, setPending] = useState(false);
@@ -164,13 +176,18 @@ function FormularioPago({
 
   const opciones = categorias.map((c) => ({ value: c.id, label: c.name }));
 
+  function elegirSugerido(sugeridoCents: number) {
+    onMontoChange(centsToInput(sugeridoCents));
+    onMontoBlur();
+  }
+
   async function enviar(formData: FormData) {
     setPending(true);
     setResultado(null);
     const r = await registrarPagoDeuda(formData);
     if (r.ok) {
       setResultado({ ok: true, mensaje: "Pago registrado." });
-      onMontoChange(""); // ya se pago, deja de descontarse del reparto
+      onPagoRegistrado(); // ya se pago, deja de descontarse del reparto
     } else {
       setResultado({ ok: false, mensaje: r.error });
     }
@@ -191,7 +208,7 @@ function FormularioPago({
             <button
               key={meses}
               type="button"
-              onClick={() => onMontoChange(centsToInput(sugerido))}
+              onClick={() => elegirSugerido(sugerido)}
               className="rounded-full border border-border px-3 py-1.5 text-xs text-muted transition hover:bg-background"
             >
               Pagarla en {meses} meses ({formatMoney(sugerido)}/mes)
@@ -210,6 +227,7 @@ function FormularioPago({
             name="amount"
             value={monto}
             onChange={(e) => onMontoChange(e.target.value)}
+            onBlur={onMontoBlur}
             className="mt-1.5 block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/40"
             placeholder="Por ejemplo 300000"
           />

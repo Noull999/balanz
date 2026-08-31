@@ -79,3 +79,29 @@ export async function actualizarBucketCategoria(
 
   return { ok: count > 0 };
 }
+
+export type ConfiguracionPlanParcial = Partial<{
+  incomeCents: number | null;
+  porcentajeEsencial: number;
+  porcentajeOcio: number;
+  porcentajeAhorro: number;
+  deudaPagoPlaneadoCents: number;
+}>;
+
+/**
+ * Guarda lo que el usuario tipeo en /plan (ingreso, porcentajes, cuanto
+ * planea pagar de deuda este mes) para que no se pierda al recargar. Se llama
+ * con valores parciales - cada input persiste el suyo en su propio blur/change,
+ * sin pisar los demas.
+ */
+export async function guardarConfiguracionPlan(datos: ConfiguracionPlanParcial): Promise<{ ok: boolean }> {
+  const user = await requireUser();
+
+  await prisma.planSettings.upsert({
+    where: { userId: user.id },
+    create: { userId: user.id, ...datos },
+    update: datos,
+  });
+
+  return { ok: true };
+}

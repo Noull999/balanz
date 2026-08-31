@@ -18,7 +18,7 @@ export default async function PlanPage() {
   const hoy = toUtcDay(todayInput());
   const desde = startOfUtcMonth(addUtcMonths(hoy, -(MESES_HISTORIAL - 1)));
 
-  const [categorias, transacciones, deuda] = await Promise.all([
+  const [categorias, transacciones, deuda, configuracion] = await Promise.all([
     prisma.category.findMany({
       where: { userId: user.id, kind: "EXPENSE" },
       orderBy: { name: "asc" },
@@ -40,9 +40,17 @@ export default async function PlanPage() {
       where: { userId: user.id },
       select: { name: true, originalCents: true, remainingCents: true },
     }),
+    prisma.planSettings.findUnique({ where: { userId: user.id } }),
   ]);
 
-  const ingresoDelMes = resumenMensual(transacciones, hoy).incomeCents;
+  const ingresoDelMes = configuracion?.incomeCents ?? resumenMensual(transacciones, hoy).incomeCents;
+  const porcentajesIniciales = configuracion
+    ? {
+        esencial: configuracion.porcentajeEsencial,
+        ocio: configuracion.porcentajeOcio,
+        ahorro: configuracion.porcentajeAhorro,
+      }
+    : undefined;
   const promedios = promedioGastoPorCategoria(transacciones, hoy, MESES_HISTORIAL - 1);
 
   const categoriasPlan = categorias.map((categoria) => ({
@@ -85,6 +93,9 @@ export default async function PlanPage() {
             categoriasGasto={categorias}
             categoriasPlan={categoriasPlan}
             ingresoInicialCents={ingresoDelMes}
+            ingresoEsManual={configuracion?.incomeCents != null}
+            porcentajesIniciales={porcentajesIniciales}
+            montoDeudaInicialCents={configuracion?.deudaPagoPlaneadoCents ?? 0}
           />
         </div>
       )}
