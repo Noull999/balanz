@@ -5,7 +5,7 @@ import { useMemo, useState, useTransition } from "react";
 
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { explicarPlanDistribucion } from "@/lib/actions/ai";
-import { aplicarPlanDistribucion } from "@/lib/actions/plan";
+import { actualizarBucketCategoria, aplicarPlanDistribucion } from "@/lib/actions/plan";
 import { centsToInput, formatMoney, inputToCents } from "@/lib/money";
 import { calcularPlan, PORCENTAJES_DEFECTO, type Bucket, type CategoriaPlan } from "@/lib/plan-distribucion";
 
@@ -14,9 +14,12 @@ type CategoriaInicial = CategoriaPlan & { color: string; icon: string };
 export function PlanDistribucionForm({
   categoriasIniciales,
   ingresoInicialCents,
+  descuentoDeudaCents = 0,
 }: {
   categoriasIniciales: CategoriaInicial[];
   ingresoInicialCents: number;
+  /** Lo que se va a destinar a la deuda este mes (DebtCard) - se resta antes de repartir. */
+  descuentoDeudaCents?: number;
 }) {
   const [income, setIncome] = useState(ingresoInicialCents > 0 ? centsToInput(ingresoInicialCents) : "");
   const [porcentajes, setPorcentajes] = useState(PORCENTAJES_DEFECTO);
@@ -33,6 +36,7 @@ export function PlanDistribucionForm({
   const [pendingAplicar, startAplicar] = useTransition();
 
   const incomeCents = inputToCents(income) ?? 0;
+  const ingresoDisponibleCents = Math.max(0, incomeCents - descuentoDeudaCents);
   const sumaPorcentajes = porcentajes.esencial + porcentajes.ocio + porcentajes.ahorro;
   const porcentajesValidos = sumaPorcentajes === 100;
 
@@ -48,8 +52,8 @@ export function PlanDistribucionForm({
   );
 
   const plan = useMemo(
-    () => calcularPlan(incomeCents, categoriasConBucket, porcentajes),
-    [incomeCents, categoriasConBucket, porcentajes],
+    () => calcularPlan(ingresoDisponibleCents, categoriasConBucket, porcentajes),
+    [ingresoDisponibleCents, categoriasConBucket, porcentajes],
   );
 
   const sugeridoPorCategoria = useMemo(
@@ -80,18 +84,24 @@ export function PlanDistribucionForm({
   function actualizarBucket(categoryId: string, bucket: Bucket) {
     setBuckets((prev) => ({ ...prev, [categoryId]: bucket }));
     setOverrides({});
+    // Se guarda de una, no hace falta esperar a "Aplicar" - asi la proxima
+    // vez que se abre /plan no vuelve a la sugerencia automatica.
+    void actualizarBucketCategoria(categoryId, bucket);
   }
 
   function pedirExplicacion() {
     setExplicacion(null);
     startIA(async () => {
-      const resultado = await explicarPlanDistribucion({
-        ...plan,
-        asignaciones: plan.asignaciones.map((a) => ({
-          ...a,
-          monthlyLimitCents: montoFinal(a.categoryId, a.monthlyLimitCents),
-        })),
-      });
+      const resultado = await explicarPlanDistribucion(
+        {
+          ...plan,
+          asignaciones: plan.asignaciones.map((a) => ({
+            ...a,
+            monthlyLimitCents: montoFinal(a.categoryId, a.monthlyLimitCents),
+          })),
+        },
+        descuentoDeudaCents,
+      );
       setExplicacion(
         resultado.ok ? { texto: resultado.texto, esError: false } : { texto: resultado.error, esError: true },
       );
@@ -155,6 +165,13 @@ export function PlanDistribucionForm({
           )}
         </div>
       </div>
+
+      {descuentoDeudaCents > 0 && (
+        <p className="text-sm text-muted">
+          {formatMoney(incomeCents)} de ingreso − {formatMoney(descuentoDeudaCents)} para la deuda ={" "}
+          <span className="font-medium text-foreground">{formatMoney(ingresoDisponibleCents)}</span> para repartir.
+        </p>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <ResumenTile label="Esencial" cents={plan.esencialCents} tono="default" />
@@ -222,7 +239,7 @@ export function PlanDistribucionForm({
           <button
             type="button"
             onClick={pedirExplicacion}
-            disabled={pendingIA || incomeCents <= 0}
+            disabled={pendingIA || ingresoDisponibleCents <= 0}
             className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand/40 px-3 py-1.5 text-xs font-medium text-brand transition hover:bg-brand/10 disabled:opacity-60"
           >
             {pendingIA && <Loader className="size-3.5 animate-spin" aria-hidden />}
@@ -241,7 +258,7 @@ export function PlanDistribucionForm({
         <button
           type="button"
           onClick={aplicar}
-          disabled={pendingAplicar || incomeCents <= 0 || !porcentajesValidos}
+          disabled={pendingAplicar || ingresoDisponibleCents <= 0 || !porcentajesValidos}
           className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-strong disabled:opacity-60"
         >
           {pendingAplicar && <Loader className="size-4 animate-spin" aria-hidden />}

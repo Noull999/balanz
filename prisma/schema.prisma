@@ -15,6 +15,11 @@ enum CategoryKind {
   EXPENSE
 }
 
+enum PlanBucket {
+  ESENCIAL
+  OCIO
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -36,6 +41,11 @@ model Category {
   color     String       @default("#64748b") // hex, para los graficos
   icon      String       @default("wallet") // nombre del icono de lucide-react
   createdAt DateTime     @default(now())
+
+  // Null = usar bucketSugerido() por nombre (src/lib/plan-distribucion.ts). Se
+  // completa la primera vez que el usuario toca el toggle Esencial/Ocio en
+  // /plan, y desde ahi queda fijo hasta que lo cambie de nuevo.
+  planBucket PlanBucket?
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions Transaction[]

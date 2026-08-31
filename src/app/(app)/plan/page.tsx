@@ -2,8 +2,7 @@ import { Target } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { DebtCard } from "@/components/plan/debt-card";
-import { PlanDistribucionForm } from "@/components/plan/plan-distribucion-form";
+import { PlanConDeuda } from "@/components/plan/plan-con-deuda";
 import { requireUser } from "@/lib/auth";
 import { addUtcMonths, startOfUtcMonth, todayInput, toUtcDay } from "@/lib/date";
 import { promedioGastoPorCategoria, resumenMensual } from "@/lib/insights";
@@ -23,7 +22,7 @@ export default async function PlanPage() {
     prisma.category.findMany({
       where: { userId: user.id, kind: "EXPENSE" },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, color: true, icon: true },
+      select: { id: true, name: true, color: true, icon: true, planBucket: true },
     }),
     prisma.transaction.findMany({
       where: { userId: user.id, date: { gte: desde } },
@@ -51,7 +50,9 @@ export default async function PlanPage() {
     name: categoria.name,
     color: categoria.color,
     icon: categoria.icon,
-    bucket: bucketSugerido(categoria.name),
+    // El balde elegido a mano queda guardado en la categoria; solo se usa la
+    // sugerencia automatica la primera vez, antes de que el usuario lo toque.
+    bucket: categoria.planBucket ?? bucketSugerido(categoria.name),
     promedioCents: promedios.get(categoria.id) ?? 0,
   }));
 
@@ -78,9 +79,13 @@ export default async function PlanPage() {
           </Link>
         </div>
       ) : (
-        <div className="mt-6 space-y-6">
-          <DebtCard deuda={deuda} categorias={categorias} />
-          <PlanDistribucionForm categoriasIniciales={categoriasPlan} ingresoInicialCents={ingresoDelMes} />
+        <div className="mt-6">
+          <PlanConDeuda
+            deuda={deuda}
+            categoriasGasto={categorias}
+            categoriasPlan={categoriasPlan}
+            ingresoInicialCents={ingresoDelMes}
+          />
         </div>
       )}
     </>

@@ -138,11 +138,17 @@ puede responder solo con los datos de arriba, dilo con claridad en vez de invent
  * (src/lib/plan-distribucion.ts): la IA recibe los montos ya hechos y solo
  * explica el porque, nunca inventa ni ajusta un numero por su cuenta.
  */
-export async function explicarPlanDistribucion(plan: PlanDistribucion): Promise<ResultadoIA> {
+export async function explicarPlanDistribucion(
+  plan: PlanDistribucion,
+  /** Cuanto se resta del ingreso por deuda antes de repartir, si el usuario cargo una. */
+  deudaCents = 0,
+): Promise<ResultadoIA> {
   await requireUser();
 
   const lineas = [
-    `Ingreso mensual: ${formatMoney(plan.incomeCents)}.`,
+    deudaCents > 0
+      ? `Ingreso mensual: ${formatMoney(plan.incomeCents + deudaCents)}, de los cuales ${formatMoney(deudaCents)} se destinan a pagar una deuda antes de repartir el resto.`
+      : `Ingreso mensual: ${formatMoney(plan.incomeCents)}.`,
     `Gastos esenciales: ${formatMoney(plan.esencialCents)}.`,
     `Ocio: ${formatMoney(plan.ocioCents)}.`,
     `Ahorro: ${formatMoney(plan.ahorroCents)}.`,
@@ -159,7 +165,9 @@ calculados, no los cambies ni inventes otros):
 
 ${lineas}
 
-Explicale en 2-3 frases por que este reparto le permite ahorrar sin resignar del todo su ocio, y
+Explicale en 2-3 frases por que este reparto le permite ahorrar sin resignar del todo su ocio${
+    deudaCents > 0 ? ", mencionando que ya esta pagando parte de su deuda este mes" : ""
+  }, y
 anima a aplicarlo o ajustarlo si algo no calza con su realidad. Espanol neutro, tuteando de "tu",
 sin markdown, tono cercano y directo.`;
 

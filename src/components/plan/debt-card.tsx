@@ -9,7 +9,7 @@ import { SelectField } from "@/components/ui/select-field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { FormState } from "@/lib/actions/auth";
 import { guardarDeuda, registrarPagoDeuda } from "@/lib/actions/debt";
-import { centsToInput, formatMoney } from "@/lib/money";
+import { centsToInput, formatMoney, inputToCents } from "@/lib/money";
 
 type DeudaActual = { name: string; originalCents: number; remainingCents: number } | null;
 type CategoriaGasto = { id: string; name: string };
@@ -17,9 +17,14 @@ type CategoriaGasto = { id: string; name: string };
 export function DebtCard({
   deuda,
   categorias,
+  montoDestinado,
+  onMontoDestinadoChange,
 }: {
   deuda: DeudaActual;
   categorias: CategoriaGasto[];
+  /** Lo que se piensa pagar este mes, en texto de input - lo usa /plan para descontarlo del reparto. */
+  montoDestinado: string;
+  onMontoDestinadoChange: (valor: string) => void;
 }) {
   const [editando, setEditando] = useState(deuda === null);
 
@@ -34,10 +39,7 @@ export function DebtCard({
           Cargala una vez con el monto total. Cada pago que registres despues va bajando el saldo.
         </p>
         <div className="mt-4">
-          <FormularioDeuda
-            deuda={deuda}
-            onGuardado={() => setEditando(false)}
-          />
+          <FormularioDeuda deuda={deuda} onGuardado={() => setEditando(false)} />
         </div>
       </div>
     );
@@ -71,7 +73,12 @@ export function DebtCard({
 
       {deuda!.remainingCents > 0 && (
         <div className="mt-5">
-          <FormularioPago categorias={categorias} />
+          <FormularioPago
+            categorias={categorias}
+            remainingCents={deuda!.remainingCents}
+            monto={montoDestinado}
+            onMontoChange={onMontoDestinadoChange}
+          />
         </div>
       )}
     </div>
@@ -102,13 +109,7 @@ function ProgresoDeuda({ deuda }: { deuda: NonNullable<DeudaActual> }) {
   );
 }
 
-function FormularioDeuda({
-  deuda,
-  onGuardado,
-}: {
-  deuda: DeudaActual;
-  onGuardado?: () => void;
-}) {
+function FormularioDeuda({ deuda, onGuardado }: { deuda: DeudaActual; onGuardado?: () => void }) {
   const [state, formAction] = useActionState<FormState, FormData>(async (prev, formData) => {
     const resultado = await guardarDeuda(prev, formData);
     if (resultado === null) onGuardado?.();
@@ -143,7 +144,20 @@ function FormularioDeuda({
   );
 }
 
-function FormularioPago({ categorias }: { categorias: CategoriaGasto[] }) {
+/** Plazos rapidos para sugerir un monto mensual: matematica pura (saldo / meses), no IA. */
+const PLAZOS_SUGERIDOS = [2, 4, 6];
+
+function FormularioPago({
+  categorias,
+  remainingCents,
+  monto,
+  onMontoChange,
+}: {
+  categorias: CategoriaGasto[];
+  remainingCents: number;
+  monto: string;
+  onMontoChange: (valor: string) => void;
+}) {
   const [categoryId, setCategoryId] = useState("");
   const [pending, setPending] = useState(false);
   const [resultado, setResultado] = useState<{ ok: boolean; mensaje: string } | null>(null);
@@ -154,13 +168,37 @@ function FormularioPago({ categorias }: { categorias: CategoriaGasto[] }) {
     setPending(true);
     setResultado(null);
     const r = await registrarPagoDeuda(formData);
-    setResultado(r.ok ? { ok: true, mensaje: "Pago registrado." } : { ok: false, mensaje: r.error });
+    if (r.ok) {
+      setResultado({ ok: true, mensaje: "Pago registrado." });
+      onMontoChange(""); // ya se pago, deja de descontarse del reparto
+    } else {
+      setResultado({ ok: false, mensaje: r.error });
+    }
     setPending(false);
   }
 
   return (
     <form action={enviar} className="space-y-3 border-t border-border pt-4">
-      <p className="text-sm font-medium">Registrar un pago</p>
+      <p className="text-sm font-medium">Cuanto vas a destinar este mes</p>
+      <p className="text-xs text-muted">
+        Este monto se descuenta de tu ingreso antes de repartir esencial/ocio/ahorro mas abajo.
+      </p>
+
+      <div className="flex flex-wrap gap-2">
+        {PLAZOS_SUGERIDOS.map((meses) => {
+          const sugerido = Math.ceil(remainingCents / meses / 100) * 100;
+          return (
+            <button
+              key={meses}
+              type="button"
+              onClick={() => onMontoChange(centsToInput(sugerido))}
+              className="rounded-full border border-border px-3 py-1.5 text-xs text-muted transition hover:bg-background"
+            >
+              Pagarla en {meses} meses ({formatMoney(sugerido)}/mes)
+            </button>
+          );
+        })}
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
@@ -170,6 +208,8 @@ function FormularioPago({ categorias }: { categorias: CategoriaGasto[] }) {
           <input
             id="amount"
             name="amount"
+            value={monto}
+            onChange={(e) => onMontoChange(e.target.value)}
             className="mt-1.5 block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/40"
             placeholder="Por ejemplo 300000"
           />
@@ -194,7 +234,7 @@ function FormularioPago({ categorias }: { categorias: CategoriaGasto[] }) {
 
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || inputToCents(monto) === null}
         className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-strong disabled:opacity-60"
       >
         {pending && <Loader className="size-4 animate-spin" aria-hidden />}

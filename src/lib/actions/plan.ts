@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { PlanBucket } from "@/generated/prisma/enums";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { asignacionSchema } from "@/lib/validation";
@@ -56,4 +57,25 @@ export async function aplicarPlanDistribucion(
   revalidatePath("/plan");
 
   return { ok: true };
+}
+
+/**
+ * Guarda a que balde (Esencial/Ocio) pertenece una categoria, para que /plan
+ * deje de recalcularlo con bucketSugerido() cada vez que se abre la pantalla.
+ */
+export async function actualizarBucketCategoria(
+  categoryId: string,
+  bucket: PlanBucket,
+): Promise<{ ok: boolean }> {
+  const user = await requireUser();
+
+  // El where incluye userId: evita mover el balde de una categoria ajena.
+  const { count } = await prisma.category.updateMany({
+    where: { id: categoryId, userId: user.id, kind: "EXPENSE" },
+    data: { planBucket: bucket },
+  });
+
+  if (count > 0) revalidatePath("/plan");
+
+  return { ok: count > 0 };
 }
