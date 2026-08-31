@@ -98,8 +98,8 @@ export default async function DashboardPage() {
       <p className="mt-1 text-muted">Asi viene este mes.</p>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
-        <div className="min-w-0 space-y-8">
-          <div className="grid gap-5 sm:grid-cols-3">
+        <div className="min-w-0 space-y-5">
+          <div className="grid gap-3 sm:grid-cols-3">
             <StatTile label="Ingresos del mes" value={formatMoney(resumen.incomeCents)} tone="positive" />
             <StatTile label="Gastos del mes" value={formatMoney(resumen.expenseCents)} tone="negative" />
             <StatTile
