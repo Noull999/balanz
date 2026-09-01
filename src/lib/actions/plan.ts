@@ -60,6 +60,45 @@ export async function aplicarPlanDistribucion(
 }
 
 /**
+ * Guarda el monto de UNA categoria del plan (a diferencia de
+ * aplicarPlanDistribucion, que las aplica todas juntas con el boton
+ * "Aplicar"). Se llama en el blur de cada input de /plan, para que un monto
+ * tocado a mano quede firme y no vuelva a la sugerencia calculada la proxima
+ * vez que se abre la pantalla.
+ */
+export async function guardarMontoCategoria(
+  categoryId: string,
+  monthlyLimitCents: number,
+): Promise<{ ok: boolean }> {
+  const user = await requireUser();
+
+  const parsed = asignacionSchema.safeParse({ categoryId, monthlyLimitCents });
+  if (!parsed.success || parsed.data.monthlyLimitCents <= 0) {
+    return { ok: false };
+  }
+
+  // Solo categorias de gasto del propio usuario: mismo resguardo que en
+  // aplicarPlanDistribucion.
+  const categoria = await prisma.category.findFirst({
+    where: { id: parsed.data.categoryId, userId: user.id, kind: "EXPENSE" },
+    select: { id: true },
+  });
+  if (!categoria) return { ok: false };
+
+  await prisma.budget.upsert({
+    where: { categoryId: parsed.data.categoryId },
+    create: { categoryId: parsed.data.categoryId, userId: user.id, monthlyLimitCents: parsed.data.monthlyLimitCents },
+    update: { monthlyLimitCents: parsed.data.monthlyLimitCents },
+  });
+
+  revalidatePath("/presupuestos");
+  revalidatePath("/dashboard");
+  revalidatePath("/plan");
+
+  return { ok: true };
+}
+
+/**
  * Guarda a que balde (Esencial/Ocio) pertenece una categoria, para que /plan
  * deje de recalcularlo con bucketSugerido() cada vez que se abre la pantalla.
  */

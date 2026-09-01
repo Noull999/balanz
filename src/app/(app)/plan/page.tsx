@@ -22,7 +22,14 @@ export default async function PlanPage() {
     prisma.category.findMany({
       where: { userId: user.id, kind: "EXPENSE" },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, color: true, icon: true, planBucket: true },
+      select: {
+        id: true,
+        name: true,
+        color: true,
+        icon: true,
+        planBucket: true,
+        budget: { select: { monthlyLimitCents: true } },
+      },
     }),
     prisma.transaction.findMany({
       where: { userId: user.id, date: { gte: desde } },
@@ -62,6 +69,9 @@ export default async function PlanPage() {
     // sugerencia automatica la primera vez, antes de que el usuario lo toque.
     bucket: categoria.planBucket ?? bucketSugerido(categoria.name),
     promedioCents: promedios.get(categoria.id) ?? 0,
+    // Si ya hay un presupuesto guardado para esta categoria, se muestra ese
+    // en vez de la sugerencia calculada - es lo que de verdad esta aplicado.
+    montoGuardadoCents: categoria.budget?.monthlyLimitCents ?? null,
   }));
 
   return (

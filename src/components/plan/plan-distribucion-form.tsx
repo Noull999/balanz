@@ -5,7 +5,12 @@ import { useMemo, useState, useTransition } from "react";
 
 import { CategoryIcon } from "@/components/categories/category-icon";
 import { explicarPlanDistribucion } from "@/lib/actions/ai";
-import { actualizarBucketCategoria, aplicarPlanDistribucion, guardarConfiguracionPlan } from "@/lib/actions/plan";
+import {
+  actualizarBucketCategoria,
+  aplicarPlanDistribucion,
+  guardarConfiguracionPlan,
+  guardarMontoCategoria,
+} from "@/lib/actions/plan";
 import { centsToInput, formatMoney, inputToCents } from "@/lib/money";
 import {
   calcularPlan,
@@ -15,7 +20,12 @@ import {
   type Porcentajes,
 } from "@/lib/plan-distribucion";
 
-type CategoriaInicial = CategoriaPlan & { color: string; icon: string };
+type CategoriaInicial = CategoriaPlan & {
+  color: string;
+  icon: string;
+  /** Presupuesto ya guardado para esta categoria, si el usuario lo fijo antes. */
+  montoGuardadoCents?: number | null;
+};
 
 export function PlanDistribucionForm({
   categoriasIniciales,
@@ -37,10 +47,17 @@ export function PlanDistribucionForm({
   const [buckets, setBuckets] = useState<Record<string, Bucket>>(() =>
     Object.fromEntries(categoriasIniciales.map((c) => [c.categoryId, c.bucket])),
   );
-  // Montos editados a mano por el usuario, por categoria. Se limpian cada vez
-  // que cambia el ingreso, los porcentajes o el balde de una categoria, para
-  // no dejar un monto viejo pisando una sugerencia nueva.
-  const [overrides, setOverrides] = useState<Record<string, string>>({});
+  // Montos editados a mano por el usuario, por categoria. Arranca con lo que
+  // ya este guardado como presupuesto real (si hay). Se limpian cada vez que
+  // cambia el ingreso, los porcentajes o el balde de una categoria, para no
+  // dejar un monto viejo pisando una sugerencia nueva.
+  const [overrides, setOverrides] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      categoriasIniciales
+        .filter((c) => c.montoGuardadoCents != null && c.montoGuardadoCents > 0)
+        .map((c) => [c.categoryId, centsToInput(c.montoGuardadoCents!)]),
+    ),
+  );
   const [explicacion, setExplicacion] = useState<{ texto: string; esError: boolean } | null>(null);
   const [aplicado, setAplicado] = useState<{ mensaje: string; esError: boolean } | null>(null);
   const [pendingIA, startIA] = useTransition();
@@ -79,6 +96,15 @@ export function PlanDistribucionForm({
   function montoFinal(categoryId: string, sugeridoCents: number): number {
     const cents = inputToCents(overrides[categoryId] ?? "");
     return cents ?? sugeridoCents;
+  }
+
+  // Se llama en el blur del monto de cada categoria: si lo que quedo tipeado
+  // es un numero valido, queda guardado como presupuesto real de una - sin
+  // esto, el numero solo vivia en este estado y se perdia al recargar.
+  function guardarMonto(categoryId: string) {
+    const cents = inputToCents(overrides[categoryId] ?? "");
+    if (cents === null || cents <= 0) return;
+    void guardarMontoCategoria(categoryId, cents);
   }
 
   function actualizarPorcentaje(campo: keyof typeof porcentajes, valor: string) {
@@ -245,6 +271,7 @@ export function PlanDistribucionForm({
                   onChange={(e) =>
                     setOverrides((prev) => ({ ...prev, [categoria.categoryId]: e.target.value }))
                   }
+                  onBlur={() => guardarMonto(categoria.categoryId)}
                   className="w-28 shrink-0 rounded-lg border border-border bg-background px-2.5 py-1.5 text-right text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/40"
                 />
               </li>
@@ -292,7 +319,8 @@ export function PlanDistribucionForm({
           Aplicar a mis presupuestos
         </button>
         <p className="text-sm text-muted">
-          Tambien podes dejar los montos como estan y ajustarlos despues, uno por uno, en Presupuestos.
+          Este boton aplica todas las categorias juntas. Si solo cambias el monto de una, se guarda
+          solo al salir de ese campo.
         </p>
       </div>
 
