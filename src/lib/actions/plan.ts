@@ -114,7 +114,12 @@ export async function actualizarBucketCategoria(
     data: { planBucket: bucket },
   });
 
-  if (count > 0) revalidatePath("/plan");
+  // El dashboard tambien usa el balde de cada categoria (PlanSummaryCard
+  // separa gastado en Esencial vs Ocio), asi que un cambio aca lo afecta.
+  if (count > 0) {
+    revalidatePath("/plan");
+    revalidatePath("/dashboard");
+  }
 
   return { ok: count > 0 };
 }

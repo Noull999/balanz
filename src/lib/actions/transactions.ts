@@ -96,6 +96,8 @@ export async function crearMovimiento(
 
   revalidatePath("/movimientos");
   revalidatePath("/dashboard");
+  revalidatePath("/presupuestos");
+  revalidatePath("/plan");
   redirect("/movimientos");
 }
 
@@ -122,6 +124,8 @@ export async function actualizarMovimiento(
 
   revalidatePath("/movimientos");
   revalidatePath("/dashboard");
+  revalidatePath("/presupuestos");
+  revalidatePath("/plan");
   redirect("/movimientos");
 }
 
@@ -133,4 +137,6 @@ export async function borrarMovimiento(formData: FormData): Promise<void> {
 
   revalidatePath("/movimientos");
   revalidatePath("/dashboard");
+  revalidatePath("/presupuestos");
+  revalidatePath("/plan");
 }

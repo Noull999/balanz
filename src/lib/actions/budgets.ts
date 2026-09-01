@@ -52,6 +52,7 @@ export async function guardarPresupuesto(
 
   revalidatePath("/presupuestos");
   revalidatePath("/dashboard");
+  revalidatePath("/plan");
   redirect("/presupuestos");
 }
 
@@ -63,4 +64,5 @@ export async function borrarPresupuesto(formData: FormData): Promise<void> {
 
   revalidatePath("/presupuestos");
   revalidatePath("/dashboard");
+  revalidatePath("/plan");
 }

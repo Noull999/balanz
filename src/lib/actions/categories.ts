@@ -58,6 +58,8 @@ export async function crearCategoria(
   await prisma.category.create({ data: { ...parsed.data, userId: user.id } });
 
   revalidatePath("/categorias");
+  revalidatePath("/presupuestos");
+  revalidatePath("/plan");
   redirect("/categorias");
 }
 
@@ -100,6 +102,8 @@ export async function actualizarCategoria(
   }
 
   revalidatePath("/categorias");
+  revalidatePath("/presupuestos");
+  revalidatePath("/plan");
   redirect("/categorias");
 }
 
@@ -109,11 +113,16 @@ export async function borrarCategoria(formData: FormData): Promise<void> {
 
   // No se borra en cascada: los movimientos que ya la usaban quedan en pie
   // con category null (la relacion es onDelete: SetNull), asi no se pierde
-  // el historial de gastos por borrar una categoria.
+  // el historial de gastos por borrar una categoria. El presupuesto de la
+  // categoria si se borra en cascada (Budget.categoryId), por eso hay que
+  // avisarle tambien a Presupuestos y Plan.
   await prisma.category.deleteMany({ where: { id, userId: user.id } });
 
   revalidatePath("/categorias");
   revalidatePath("/movimientos");
+  revalidatePath("/presupuestos");
+  revalidatePath("/plan");
+  revalidatePath("/dashboard");
 }
 
 function formDataToValues(formData: FormData): Record<string, string> {
