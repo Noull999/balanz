@@ -6,6 +6,7 @@ import { BalanceChart } from "@/components/dashboard/balance-chart";
 import { CategoryPieChart } from "@/components/dashboard/category-pie-chart";
 import { InsightCard } from "@/components/dashboard/insight-card";
 import { PlanSummaryCard } from "@/components/dashboard/plan-summary-card";
+import { SaludBadge } from "@/components/dashboard/salud-badge";
 import { SpendingCalendar } from "@/components/dashboard/spending-calendar";
 import { StatTile } from "@/components/dashboard/stat-tile";
 import { requireUser } from "@/lib/auth";
@@ -15,6 +16,7 @@ import { formatMoney } from "@/lib/money";
 import { calcularPlan, bucketSugerido, PORCENTAJES_DEFECTO } from "@/lib/plan-distribucion";
 import { prisma } from "@/lib/prisma";
 import { generarRecomendaciones } from "@/lib/recommendations";
+import { calcularSaludFinanciera } from "@/lib/salud-financiera";
 
 export const metadata: Metadata = { title: "Panel" };
 
@@ -28,7 +30,7 @@ export default async function DashboardPage() {
   const hoy = toUtcDay(todayInput());
   const desde = startOfUtcMonth(addUtcMonths(hoy, -(MESES_HISTORIAL - 1)));
 
-  const [transacciones, presupuestos, categoriasBucket, configuracion] = await Promise.all([
+  const [transacciones, presupuestos, categoriasBucket, configuracion, deuda] = await Promise.all([
     prisma.transaction.findMany({
       where: { userId: user.id, date: { gte: desde } },
       orderBy: { date: "asc" },
@@ -55,6 +57,7 @@ export default async function DashboardPage() {
       select: { id: true, name: true, planBucket: true },
     }),
     prisma.planSettings.findUnique({ where: { userId: user.id } }),
+    prisma.debt.findUnique({ where: { userId: user.id }, select: { remainingCents: true } }),
   ]);
 
   const resumen = resumenMensual(transacciones, hoy);
@@ -90,11 +93,32 @@ export default async function DashboardPage() {
     else esencialGastadoCents += c.amountCents;
   }
 
+  const presupuestosSuperados = presupuestos.filter((p) => {
+    if (p.monthlyLimitCents <= 0) return false;
+    const { expenseCents } = resumenMensual(
+      transacciones.filter((t) => t.categoryId === p.categoryId),
+      hoy,
+    );
+    return expenseCents > p.monthlyLimitCents;
+  }).length;
+
+  const salud = calcularSaludFinanciera({
+    balanceCents: resumen.balanceCents,
+    ahorroMetaCents: planTargets.ahorroCents,
+    presupuestosSuperados,
+    presupuestosTotal: presupuestos.length,
+    deudaRemainingCents: deuda?.remainingCents ?? 0,
+    ingresoMensualCents: ingresoPlanCents,
+  });
+
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight">
-        Hola{user.name ? `, ${user.name.split(" ")[0]}` : ""}
-      </h1>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Hola{user.name ? `, ${user.name.split(" ")[0]}` : ""}
+        </h1>
+        <SaludBadge salud={salud} />
+      </div>
       <p className="mt-1 text-muted">Asi viene este mes.</p>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
