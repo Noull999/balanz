@@ -96,3 +96,16 @@ export const pagoDeudaSchema = z.object({
   amount: z.string().min(1, "Escribe un monto"),
   categoryId: z.string().trim().min(1, "Elige una categoria"),
 });
+
+export const metaAhorroSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Escribe un nombre")
+    .max(60, "Ese nombre es demasiado largo"),
+  targetAmount: z.string().min(1, "Escribe el monto objetivo"),
+  targetDate: z
+    .string()
+    .optional()
+    .refine((v) => !v || /^\d{4}-\d{2}-\d{2}$/.test(v), "Elige una fecha valida"),
+});

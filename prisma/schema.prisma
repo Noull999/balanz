@@ -32,6 +32,7 @@ model User {
   budgets      Budget[]
   debt         Debt?
   planSettings PlanSettings?
+  savingsGoals SavingsGoal[]
 }
 
 model Category {
@@ -127,4 +128,23 @@ model PlanSettings {
   updatedAt              DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Varias metas por usuario. El "ahorrado" no se guarda como campo: se calcula
+// sumando el balance real (ingresos - gastos) de cada mes desde createdAt
+// hasta hoy (ver src/lib/metas-ahorro.ts) - no hay una "billetera" separada
+// para el ahorro en esta app, es el mismo balance de siempre. targetDate es
+// opcional: sin fecha, la meta solo muestra el ritmo, no si "llega a tiempo".
+model SavingsGoal {
+  id          String    @id @default(cuid())
+  userId      String
+  name        String
+  targetCents Int
+  targetDate  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
