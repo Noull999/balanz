@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Movimientos" };
 export default async function MovimientosPage() {
   const user = await requireUser();
 
-  const [movimientos, pendientes, categorias] = await Promise.all([
+  const [movimientos, pendientes, categorias, conexionGmail] = await Promise.all([
     prisma.transaction.findMany({
       where: { userId: user.id },
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
@@ -47,6 +47,10 @@ export default async function MovimientosPage() {
       orderBy: { name: "asc" },
       select: { id: true, name: true, kind: true },
     }),
+    prisma.gmailConnection.findUnique({
+      where: { userId: user.id },
+      select: { email: true },
+    }),
   ]);
 
   return (
@@ -73,7 +77,11 @@ export default async function MovimientosPage() {
       </div>
 
       <div className="mt-6">
-        <BandejaPendientes pendientes={pendientes} categorias={categorias} />
+        <BandejaPendientes
+          pendientes={pendientes}
+          categorias={categorias}
+          gmail={{ conectado: conexionGmail !== null, email: conexionGmail?.email ?? null }}
+        />
       </div>
 
       {movimientos.length === 0 ? (

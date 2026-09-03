@@ -34,6 +34,32 @@ model User {
   planSettings PlanSettings?
   savingsGoals SavingsGoal[]
   pendingTransactions PendingTransaction[]
+  gmailConnection GmailConnection?
+}
+
+// Conexion de solo lectura a la casilla del usuario, para leer los avisos de
+// compra que manda el banco. Guarda el refresh token (no la contrasena de
+// Google: el usuario autoriza en la pantalla de Google y este token se puede
+// revocar desde su cuenta cuando quiera). Se pide unicamente el scope
+// gmail.readonly.
+model GmailConnection {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  refreshToken String
+  /** Que casilla quedo conectada, para mostrarlo en pantalla. */
+  email String?
+
+  /**
+   * Hasta donde llego la ultima busqueda. Se usa para pedirle a Gmail solo lo
+   * posterior en vez de recorrer la casilla entera cada vez.
+   */
+  lastSyncAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Category {

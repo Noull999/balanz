@@ -1,8 +1,9 @@
 "use client";
 
-import { Check, Loader, Sparkles, Trash2, TriangleAlert } from "lucide-react";
+import { Check, Loader, Mail, RefreshCw, Sparkles, Trash2, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
+import { desconectarGmail, sincronizarAhora } from "@/lib/actions/gmail";
 import { analizarTexto, confirmarPendiente, descartarPendiente } from "@/lib/actions/pending";
 import { formatDay } from "@/lib/date";
 import { UMBRAL_CONFIANZA_ALTA } from "@/lib/extraccion";
@@ -24,20 +25,27 @@ type Categoria = { id: string; name: string; kind: "INCOME" | "EXPENSE" };
 export function BandejaPendientes({
   pendientes,
   categorias,
+  gmail,
 }: {
   pendientes: Pendiente[];
   categorias: Categoria[];
+  gmail: { conectado: boolean; email: string | null };
 }) {
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
-      <h2 className="flex items-center gap-1.5 text-sm font-medium">
-        <Sparkles className="size-4 text-brand" aria-hidden />
-        Detectados automaticamente
-      </h2>
-      <p className="mt-1 text-sm text-muted">
-        Balanz lee el aviso de compra que manda el banco y arma el movimiento. Nada entra a tus numeros
-        hasta que lo confirmas aca.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="flex items-center gap-1.5 text-sm font-medium">
+            <Sparkles className="size-4 text-brand" aria-hidden />
+            Detectados automaticamente
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            Balanz lee el aviso de compra que manda el banco y arma el movimiento. Nada entra a tus
+            numeros hasta que lo confirmas aca.
+          </p>
+        </div>
+        <ConexionGmail gmail={gmail} />
+      </div>
 
       {pendientes.length > 0 && (
         <ul className="mt-4 space-y-3">
@@ -50,6 +58,65 @@ export function BandejaPendientes({
       <div className="mt-4 border-t border-border pt-4">
         <FormularioTexto />
       </div>
+    </div>
+  );
+}
+
+/** Conectar la casilla, o (si ya esta conectada) buscar avisos nuevos a mano. */
+function ConexionGmail({ gmail }: { gmail: { conectado: boolean; email: string | null } }) {
+  const [pending, setPending] = useState(false);
+  const [resultado, setResultado] = useState<string | null>(null);
+
+  if (!gmail.conectado) {
+    return (
+      <a
+        href="/api/gmail/connect"
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium transition hover:bg-background"
+      >
+        <Mail className="size-4 text-brand" aria-hidden />
+        Conectar Gmail
+      </a>
+    );
+  }
+
+  async function buscar() {
+    setPending(true);
+    setResultado(null);
+
+    const r = await sincronizarAhora();
+    setResultado(
+      r.ok
+        ? r.detectados > 0
+          ? `Encontre ${r.detectados} movimiento${r.detectados > 1 ? "s" : ""}.`
+          : "No hay avisos nuevos."
+        : r.error,
+    );
+    setPending(false);
+  }
+
+  return (
+    <div className="shrink-0 text-right">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={buscar}
+          disabled={pending}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium transition hover:bg-background disabled:opacity-60"
+        >
+          {pending ? (
+            <Loader className="size-4 animate-spin" aria-hidden />
+          ) : (
+            <RefreshCw className="size-4 text-brand" aria-hidden />
+          )}
+          Buscar ahora
+        </button>
+        <form action={desconectarGmail}>
+          <button type="submit" className="text-xs text-muted transition hover:text-negative">
+            Desconectar
+          </button>
+        </form>
+      </div>
+      <p className="mt-1 text-xs text-muted">{resultado ?? gmail.email ?? "Casilla conectada"}</p>
     </div>
   );
 }
