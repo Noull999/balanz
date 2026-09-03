@@ -1,8 +1,9 @@
 "use client";
 
-import { Check, Loader, Mail, RefreshCw, Sparkles, Trash2, TriangleAlert } from "lucide-react";
-import { useState } from "react";
+import { Check, FileUp, Loader, Mail, RefreshCw, Sparkles, Trash2, TriangleAlert } from "lucide-react";
+import { useRef, useState } from "react";
 
+import { importarCartola } from "@/lib/actions/cartola";
 import { desconectarGmail, sincronizarAhora } from "@/lib/actions/gmail";
 import { analizarTexto, confirmarPendiente, descartarPendiente } from "@/lib/actions/pending";
 import { formatDay } from "@/lib/date";
@@ -55,8 +56,9 @@ export function BandejaPendientes({
         </ul>
       )}
 
-      <div className="mt-4 border-t border-border pt-4">
+      <div className="mt-4 grid gap-4 border-t border-border pt-4 sm:grid-cols-2">
         <FormularioTexto />
+        <FormularioCartola />
       </div>
     </div>
   );
@@ -259,6 +261,68 @@ function FormularioTexto() {
       >
         {pending && <Loader className="size-4 animate-spin" aria-hidden />}
         Analizar
+      </button>
+    </form>
+  );
+}
+
+/**
+ * Red de seguridad mensual: sube la cartola completa (Excel o CSV que
+ * descarga cualquier banco) para agarrar lo que el correo no capto. Los
+ * movimientos que ya estan cargados (por correo o a mano) no se duplican.
+ */
+function FormularioCartola() {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [nombreArchivo, setNombreArchivo] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const [resultado, setResultado] = useState<{ ok: boolean; mensaje: string } | null>(null);
+
+  async function enviar(formData: FormData) {
+    setPending(true);
+    setResultado(null);
+
+    const r = await importarCartola(formData);
+    if (r.ok) {
+      setNombreArchivo(null);
+      if (inputRef.current) inputRef.current.value = "";
+      const partes = [`${r.nuevos} nuevo${r.nuevos === 1 ? "" : "s"}`];
+      if (r.duplicados > 0) partes.push(`${r.duplicados} ya estaba${r.duplicados === 1 ? "" : "n"} cargado${r.duplicados === 1 ? "" : "s"}`);
+      setResultado({ ok: true, mensaje: `Listo: ${partes.join(", ")} de ${r.leidos} filas.` });
+    } else {
+      setResultado({ ok: false, mensaje: r.error });
+    }
+    setPending(false);
+  }
+
+  return (
+    <form action={enviar} className="space-y-2 border-t border-border pt-4 sm:border-t-0 sm:border-l sm:pl-4 sm:pt-0">
+      <label htmlFor="cartola" className="block text-sm font-medium">
+        Importar cartola del mes
+      </label>
+      <p className="text-xs text-muted">
+        El Excel o CSV que exporta tu banco. Sirve de respaldo: agarra lo que el correo no capto, sin duplicar.
+      </p>
+      <input
+        ref={inputRef}
+        id="cartola"
+        name="archivo"
+        type="file"
+        accept=".csv,.xlsx,.xls"
+        onChange={(event) => setNombreArchivo(event.target.files?.[0]?.name ?? null)}
+        className="block w-full text-sm text-muted file:mr-3 file:rounded-lg file:border file:border-border file:bg-background file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground"
+      />
+
+      {resultado && (
+        <p className={`text-sm ${resultado.ok ? "text-positive" : "text-negative"}`}>{resultado.mensaje}</p>
+      )}
+
+      <button
+        type="submit"
+        disabled={pending || !nombreArchivo}
+        className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-strong disabled:opacity-60"
+      >
+        {pending ? <Loader className="size-4 animate-spin" aria-hidden /> : <FileUp className="size-4" aria-hidden />}
+        Importar
       </button>
     </form>
   );
