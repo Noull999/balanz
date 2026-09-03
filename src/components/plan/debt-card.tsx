@@ -31,6 +31,12 @@ export function DebtCard({
 }) {
   const [editando, setEditando] = useState(deuda === null);
 
+  const pagoPlaneadoCents = inputToCents(montoDestinado) ?? 0;
+  const mesesParaTerminar =
+    deuda && deuda.remainingCents > 0 && pagoPlaneadoCents > 0
+      ? Math.ceil(deuda.remainingCents / pagoPlaneadoCents)
+      : null;
+
   if (editando) {
     return (
       <div className="rounded-xl border border-border bg-surface p-6">
@@ -60,6 +66,13 @@ export function DebtCard({
             {deuda!.remainingCents === 0
               ? "Ya la pagaste por completo."
               : `Te queda ${formatMoney(deuda!.remainingCents)} de ${formatMoney(deuda!.originalCents)}.`}
+            {deuda!.remainingCents > 0 && mesesParaTerminar !== null && (
+              <>
+                {" "}
+                Al ritmo actual ({formatMoney(inputToCents(montoDestinado) ?? 0)}/mes), la terminas de pagar en
+                aproximadamente {mesesParaTerminar} {mesesParaTerminar === 1 ? "mes" : "meses"}.
+              </>
+            )}
           </p>
         </div>
         <button
