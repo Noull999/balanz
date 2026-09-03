@@ -2,6 +2,7 @@ import { ArrowLeftRight, Pencil, Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { BandejaPendientes } from "@/components/transactions/bandeja-pendientes";
 import { BorrarMovimiento } from "@/components/transactions/borrar-movimiento";
 import { requireUser } from "@/lib/auth";
 import { formatDay } from "@/lib/date";
@@ -13,19 +14,40 @@ export const metadata: Metadata = { title: "Movimientos" };
 export default async function MovimientosPage() {
   const user = await requireUser();
 
-  const movimientos = await prisma.transaction.findMany({
-    where: { userId: user.id },
-    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-    take: 100,
-    select: {
-      id: true,
-      description: true,
-      amountCents: true,
-      type: true,
-      date: true,
-      category: { select: { name: true, color: true } },
-    },
-  });
+  const [movimientos, pendientes, categorias] = await Promise.all([
+    prisma.transaction.findMany({
+      where: { userId: user.id },
+      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+      take: 100,
+      select: {
+        id: true,
+        description: true,
+        amountCents: true,
+        type: true,
+        date: true,
+        category: { select: { name: true, color: true } },
+      },
+    }),
+    prisma.pendingTransaction.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        description: true,
+        amountCents: true,
+        type: true,
+        date: true,
+        suggestedCategoryId: true,
+        confidence: true,
+        rawSource: true,
+      },
+    }),
+    prisma.category.findMany({
+      where: { userId: user.id },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, kind: true },
+    }),
+  ]);
 
   return (
     <>
@@ -48,6 +70,10 @@ export default async function MovimientosPage() {
           <Plus className="size-4" />
           Nuevo
         </Link>
+      </div>
+
+      <div className="mt-6">
+        <BandejaPendientes pendientes={pendientes} categorias={categorias} />
       </div>
 
       {movimientos.length === 0 ? (

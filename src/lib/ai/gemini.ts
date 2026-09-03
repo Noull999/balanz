@@ -107,9 +107,13 @@ export type ResultadoJSON<T> = { ok: true; datos: T } | { ok: false; error: stri
 export async function generarJSON<T>(
   prompt: string,
   schema: Record<string, unknown>,
+  // Extraer datos de un texto quiere temperatura 0 (misma entrada, misma
+  // salida); redactar un resumen quiere algo de variedad. De ahi que sea
+  // configurable en vez de fijo.
+  opciones: { temperature?: number } = {},
 ): Promise<ResultadoJSON<T>> {
   const resultado = await llamarGemini(prompt, {
-    temperature: 0.6,
+    temperature: opciones.temperature ?? 0.6,
     maxOutputTokens: 500,
     thinkingConfig: THINKING_MINIMO,
     responseMimeType: "application/json",
