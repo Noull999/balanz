@@ -210,6 +210,91 @@ function sugerirCategoria(descripcion: string, categorias: CategoriaDisponible[]
   return candidata?.id ?? null;
 }
 
+/**
+ * Las tarjetas de credito CMR (Falabella) exportan un formato particular:
+ * FECHA/DESCRIPCION/TITULAR/MONTO/CUOTAS PENDIENTES/VALOR CUOTA, donde MONTO
+ * nunca trae signo (es una lista de cargos) y el pago hecho a la tarjeta se
+ * distingue solo por el texto de la descripcion, no por un monto negativo.
+ * Se detecta por el nombre EXACTO de esas dos columnas -tan especifico que no
+ * hace falta preguntarle a la IA- y se parsea 100% con matematica pura, sin
+ * ninguna llamada a Gemini: inmune a que el modelo este lento o caido.
+ */
+const ENCABEZADOS_CMR = ["monto", "valor cuota"];
+const FILAS_MUESTRA_ENCABEZADO_CMR = 10;
+
+/** El pago hecho a la tarjeta ya aparece como transferencia en la cta corriente - importarlo tambien duplicaria el gasto. */
+const PALABRA_EXCLUIR_PAGO_TARJETA = "PAGO TARJETA";
+
+function detectarEncabezadoCMR(filas: string[][]): number | null {
+  for (let i = 0; i < Math.min(filas.length, FILAS_MUESTRA_ENCABEZADO_CMR); i++) {
+    const encabezado = filas[i].map((h) => h.toLowerCase());
+    if (ENCABEZADOS_CMR.every((esperado) => encabezado.some((h) => h === esperado))) return i;
+  }
+  return null;
+}
+
+function parsearFilasCMR(
+  filas: string[][],
+  idxEncabezado: number,
+  categorias: CategoriaDisponible[],
+): { movimientos: MovimientoCartola[]; filasDescartadas: number } {
+  const encabezado = filas[idxEncabezado];
+  const idxFecha = indiceColumna(encabezado, "FECHA");
+  const idxDescripcion = indiceColumna(encabezado, "DESCRIPCION");
+  const idxMonto = indiceColumna(encabezado, "MONTO");
+
+  const movimientos: MovimientoCartola[] = [];
+  let descartadas = 0;
+
+  for (const fila of filas.slice(idxEncabezado + 1, idxEncabezado + 1 + MAX_FILAS)) {
+    const fecha = parsearFechaChilena(fila[idxFecha] ?? "");
+    const descripcion = (fila[idxDescripcion] ?? "").trim().slice(0, 120);
+    const amountCents = inputToCents(fila[idxMonto] ?? "");
+
+    if (!fecha || !descripcion || amountCents === null || amountCents <= 0) {
+      descartadas++;
+      continue;
+    }
+    if (descripcion.toUpperCase().includes(PALABRA_EXCLUIR_PAGO_TARJETA)) {
+      descartadas++;
+      continue;
+    }
+
+    movimientos.push({
+      amountCents,
+      type: "EXPENSE",
+      description: descripcion,
+      date: fecha,
+      suggestedCategoryId: sugerirCategoria(descripcion, categorias, "EXPENSE"),
+      confidence: 90,
+      filaOriginal: fila.join(" | "),
+    });
+  }
+
+  return { movimientos, filasDescartadas: descartadas };
+}
+
+/**
+ * La deteccion de estructura es UNA llamada por archivo, poco frecuente
+ * (cartola mensual) pero de la que depende el import entero - vale la pena
+ * un par de reintentos extra ademas del que ya hace llamarGemini() por su
+ * cuenta (confirmado en produccion: dos fallos seguidos de Gemini, timeout y
+ * despues "alta demanda", tiraron abajo un import entero).
+ */
+const REINTENTOS_ESTRUCTURA = 2;
+
+async function detectarEstructuraConReintentos(prompt: string): Promise<ReturnType<typeof generarJSON<Estructura>>> {
+  let ultimoError: Awaited<ReturnType<typeof generarJSON<Estructura>>> | null = null;
+
+  for (let intento = 0; intento <= REINTENTOS_ESTRUCTURA; intento++) {
+    const resultado = await generarJSON<Estructura>(prompt, ESQUEMA_ESTRUCTURA, { temperature: 0 });
+    if (resultado.ok) return resultado;
+    ultimoError = resultado;
+  }
+
+  return ultimoError!;
+}
+
 export async function parsearCartola(
   buffer: ArrayBuffer,
   categorias: CategoriaDisponible[],
@@ -227,6 +312,12 @@ export async function parsearCartola(
     return { ok: false, error: "El archivo esta vacio." };
   }
 
+  const idxEncabezadoCMR = detectarEncabezadoCMR(filas);
+  if (idxEncabezadoCMR !== null) {
+    const { movimientos, filasDescartadas } = parsearFilasCMR(filas, idxEncabezadoCMR, categorias);
+    return { ok: true, movimientos, filasLeidas: filas.length - idxEncabezadoCMR - 1, filasDescartadas };
+  }
+
   const muestra = filas
     .slice(0, MAX_FILAS_MUESTRA)
     .map((fila, i) => `Fila ${i}: ${fila.join(" | ")}`)
@@ -241,7 +332,7 @@ ${muestra}
 
 Identifica la fila donde empiezan los datos reales (no el encabezado) y el nombre EXACTO de las columnas relevantes.`;
 
-  const resultado = await generarJSON<Estructura>(prompt, ESQUEMA_ESTRUCTURA, { temperature: 0 });
+  const resultado = await detectarEstructuraConReintentos(prompt);
   if (!resultado.ok) return resultado;
 
   const estructura = resultado.datos;

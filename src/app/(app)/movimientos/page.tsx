@@ -11,6 +11,13 @@ import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = { title: "Movimientos" };
 
+// La importacion de cartola puede reintentar la deteccion de estructura y
+// procesar varios archivos en un mismo envio (ver actions/cartola.ts); el
+// default de Vercel no alcanza para eso. Se configura aca (la pagina) y no en
+// el archivo de la action porque un archivo "use server" solo puede exportar
+// funciones async, ninguna otra cosa a nivel modulo.
+export const maxDuration = 60;
+
 export default async function MovimientosPage() {
   const user = await requireUser();
 

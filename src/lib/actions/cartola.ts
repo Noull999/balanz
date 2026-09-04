@@ -3,32 +3,36 @@
 import { revalidatePath } from "next/cache";
 
 import { requireUser } from "@/lib/auth";
-import { parsearCartola } from "@/lib/cartola";
+import { parsearCartola, type MovimientoCartola } from "@/lib/cartola";
 import { toUtcDay } from "@/lib/date";
 import { prisma } from "@/lib/prisma";
 
 export type ResultadoImportacion =
-  | { ok: true; leidos: number; nuevos: number; duplicados: number; descartados: number }
+  | { ok: true; archivos: number; leidos: number; nuevos: number; duplicados: number; descartados: number }
   | { ok: false; error: string };
 
 const MAX_TAMANO_BYTES = 5 * 1024 * 1024;
 
 /**
- * Importa una cartola. A diferencia del correo (que solo se compara contra
- * otros correos por su id), la cartola se compara contra los movimientos que
- * YA existen -tanto confirmados como pendientes- porque es justamente la red
- * de seguridad de lo que el correo ya trajo: sin este chequeo, subir la
- * cartola de un mes que ya se cargo por mail duplicaria todo.
+ * Importa una o mas cartolas a la vez (cta corriente + tarjeta, por ejemplo).
+ * A diferencia del correo (que solo se compara contra otros correos por su
+ * id), la cartola se compara contra los movimientos que YA existen -tanto
+ * confirmados como pendientes, y tambien contra los demas archivos del MISMO
+ * envio- porque es justamente la red de seguridad de lo que el correo ya
+ * trajo: sin este chequeo, subir la cartola de un mes que ya se cargo por
+ * mail (o subir cta corriente + tarjeta con un movimiento que aparece en las
+ * dos, como un pago a la tarjeta) duplicaria todo.
  */
 export async function importarCartola(formData: FormData): Promise<ResultadoImportacion> {
   const user = await requireUser();
 
-  const archivo = formData.get("archivo");
-  if (!(archivo instanceof File) || archivo.size === 0) {
-    return { ok: false, error: "Elige un archivo primero." };
+  const archivos = formData.getAll("archivo").filter((a): a is File => a instanceof File && a.size > 0);
+  if (archivos.length === 0) {
+    return { ok: false, error: "Elige al menos un archivo primero." };
   }
-  if (archivo.size > MAX_TAMANO_BYTES) {
-    return { ok: false, error: "El archivo es demasiado grande (maximo 5 MB)." };
+  const demasiadoGrande = archivos.find((a) => a.size > MAX_TAMANO_BYTES);
+  if (demasiadoGrande) {
+    return { ok: false, error: `"${demasiadoGrande.name}" es demasiado grande (maximo 5 MB).` };
   }
 
   const categorias = await prisma.category.findMany({
@@ -36,16 +40,27 @@ export async function importarCartola(formData: FormData): Promise<ResultadoImpo
     select: { id: true, name: true, kind: true },
   });
 
-  const buffer = await archivo.arrayBuffer();
-  const resultado = await parsearCartola(buffer, categorias, archivo.name);
-  if (!resultado.ok) return resultado;
+  const porArchivo: { nombre: string; movimientos: MovimientoCartola[] }[] = [];
+  let leidos = 0;
+  let descartados = 0;
 
-  const { movimientos } = resultado;
-  if (movimientos.length === 0) {
-    return { ok: true, leidos: resultado.filasLeidas, nuevos: 0, duplicados: 0, descartados: resultado.filasDescartadas };
+  for (const archivo of archivos) {
+    const buffer = await archivo.arrayBuffer();
+    const resultado = await parsearCartola(buffer, categorias, archivo.name);
+    if (!resultado.ok) {
+      return { ok: false, error: archivos.length > 1 ? `"${archivo.name}": ${resultado.error}` : resultado.error };
+    }
+    porArchivo.push({ nombre: archivo.name, movimientos: resultado.movimientos });
+    leidos += resultado.filasLeidas;
+    descartados += resultado.filasDescartadas;
   }
 
-  const fechas = movimientos.map((m) => toUtcDay(m.date));
+  const todos = porArchivo.flatMap(({ nombre, movimientos }) => movimientos.map((m) => ({ ...m, nombreArchivo: nombre })));
+  if (todos.length === 0) {
+    return { ok: true, archivos: archivos.length, leidos, nuevos: 0, duplicados: 0, descartados };
+  }
+
+  const fechas = todos.map((m) => toUtcDay(m.date));
   const desde = new Date(Math.min(...fechas.map((f) => f.getTime())));
   const hasta = new Date(Math.max(...fechas.map((f) => f.getTime())) + 86_400_000);
 
@@ -69,12 +84,17 @@ export async function importarCartola(formData: FormData): Promise<ResultadoImpo
   let nuevos = 0;
   let duplicados = 0;
 
-  for (const movimiento of movimientos) {
+  for (const movimiento of todos) {
     const fecha = toUtcDay(movimiento.date);
-    if (yaExisten.has(clave(fecha, movimiento.amountCents, movimiento.type))) {
+    const k = clave(fecha, movimiento.amountCents, movimiento.type);
+    // Chequea contra la base Y contra lo ya insertado en este mismo envio
+    // (ej. si el mismo pago aparece en la cartola de la cuenta y en la de
+    // la tarjeta) antes de agregarlo al set, para no duplicar entre archivos.
+    if (yaExisten.has(k)) {
       duplicados++;
       continue;
     }
+    yaExisten.add(k);
 
     await prisma.pendingTransaction.create({
       data: {
@@ -85,7 +105,7 @@ export async function importarCartola(formData: FormData): Promise<ResultadoImpo
         date: fecha,
         suggestedCategoryId: movimiento.suggestedCategoryId,
         confidence: movimiento.confidence,
-        rawSource: `[Cartola: ${archivo.name}]\n${movimiento.filaOriginal}`,
+        rawSource: `[Cartola: ${movimiento.nombreArchivo}]\n${movimiento.filaOriginal}`,
         externalId: null,
       },
     });
@@ -93,5 +113,5 @@ export async function importarCartola(formData: FormData): Promise<ResultadoImpo
   }
 
   revalidatePath("/movimientos");
-  return { ok: true, leidos: resultado.filasLeidas, nuevos, duplicados, descartados: resultado.filasDescartadas };
+  return { ok: true, archivos: archivos.length, leidos, nuevos, duplicados, descartados };
 }

@@ -273,7 +273,7 @@ function FormularioTexto() {
  */
 function FormularioCartola() {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [nombreArchivo, setNombreArchivo] = useState<string | null>(null);
+  const [cantidadArchivos, setCantidadArchivos] = useState(0);
   const [pending, setPending] = useState(false);
   const [resultado, setResultado] = useState<{ ok: boolean; mensaje: string } | null>(null);
 
@@ -283,11 +283,12 @@ function FormularioCartola() {
 
     const r = await importarCartola(formData);
     if (r.ok) {
-      setNombreArchivo(null);
+      setCantidadArchivos(0);
       if (inputRef.current) inputRef.current.value = "";
       const partes = [`${r.nuevos} nuevo${r.nuevos === 1 ? "" : "s"}`];
       if (r.duplicados > 0) partes.push(`${r.duplicados} ya estaba${r.duplicados === 1 ? "" : "n"} cargado${r.duplicados === 1 ? "" : "s"}`);
-      setResultado({ ok: true, mensaje: `Listo: ${partes.join(", ")} de ${r.leidos} filas.` });
+      const archivos = r.archivos > 1 ? ` (${r.archivos} archivos)` : "";
+      setResultado({ ok: true, mensaje: `Listo: ${partes.join(", ")} de ${r.leidos} filas${archivos}.` });
     } else {
       setResultado({ ok: false, mensaje: r.error });
     }
@@ -301,14 +302,16 @@ function FormularioCartola() {
       </label>
       <p className="text-xs text-muted">
         El Excel o CSV que exporta tu banco. Sirve de respaldo: agarra lo que el correo no capto, sin duplicar.
+        Podes elegir mas de un archivo (ej. cuenta corriente + tarjeta) de una.
       </p>
       <input
         ref={inputRef}
         id="cartola"
         name="archivo"
         type="file"
+        multiple
         accept=".csv,.xlsx,.xls"
-        onChange={(event) => setNombreArchivo(event.target.files?.[0]?.name ?? null)}
+        onChange={(event) => setCantidadArchivos(event.target.files?.length ?? 0)}
         className="block w-full text-sm text-muted file:mr-3 file:rounded-lg file:border file:border-border file:bg-background file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground"
       />
 
@@ -318,11 +321,11 @@ function FormularioCartola() {
 
       <button
         type="submit"
-        disabled={pending || !nombreArchivo}
+        disabled={pending || cantidadArchivos === 0}
         className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-strong disabled:opacity-60"
       >
         {pending ? <Loader className="size-4 animate-spin" aria-hidden /> : <FileUp className="size-4" aria-hidden />}
-        Importar
+        Importar{cantidadArchivos > 1 ? ` (${cantidadArchivos} archivos)` : ""}
       </button>
     </form>
   );
