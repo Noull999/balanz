@@ -5,6 +5,7 @@ import { AiSummary } from "@/components/dashboard/ai-summary";
 import { BalanceChart } from "@/components/dashboard/balance-chart";
 import { CategoryPieChart } from "@/components/dashboard/category-pie-chart";
 import { InsightCard } from "@/components/dashboard/insight-card";
+import { OnboardingChecklist } from "@/components/dashboard/onboarding-checklist";
 import { PlanSummaryCard } from "@/components/dashboard/plan-summary-card";
 import { SaludBadge } from "@/components/dashboard/salud-badge";
 import { SpendingCalendar } from "@/components/dashboard/spending-calendar";
@@ -30,7 +31,7 @@ export default async function DashboardPage() {
   const hoy = toUtcDay(todayInput());
   const desde = startOfUtcMonth(addUtcMonths(hoy, -(MESES_HISTORIAL - 1)));
 
-  const [transacciones, presupuestos, categoriasBucket, configuracion, deuda] = await Promise.all([
+  const [transacciones, presupuestos, categoriasBucket, configuracion, deuda, gmailConectado] = await Promise.all([
     prisma.transaction.findMany({
       where: { userId: user.id, date: { gte: desde } },
       orderBy: { date: "asc" },
@@ -58,6 +59,7 @@ export default async function DashboardPage() {
     }),
     prisma.planSettings.findUnique({ where: { userId: user.id } }),
     prisma.debt.findUnique({ where: { userId: user.id }, select: { remainingCents: true } }),
+    prisma.gmailConnection.findUnique({ where: { userId: user.id }, select: { id: true } }),
   ]);
 
   const resumen = resumenMensual(transacciones, hoy);
@@ -111,6 +113,22 @@ export default async function DashboardPage() {
     ingresoMensualCents: ingresoPlanCents,
   });
 
+  // El orden importa: primero lo automatico (conectar correo o subir una
+  // cartola carga muchos movimientos de una), recien despues cargar a mano -
+  // para alguien nuevo, cargar todo un mes movimiento por movimiento es la
+  // peor forma de empezar.
+  const pasosOnboarding = [
+    { label: "Tus categorias ya estan listas", done: true, href: "/categorias", cta: "Ver" },
+    {
+      label: "Conecta tu correo o sube una cartola",
+      done: gmailConectado !== null || transacciones.length > 0,
+      href: "/movimientos",
+      cta: "Conectar",
+    },
+    { label: "Confirma tu primer movimiento", done: transacciones.length > 0, href: "/movimientos", cta: "Ir" },
+    { label: "Arma tu plan de distribucion", done: configuracion !== null, href: "/plan", cta: "Armar" },
+  ];
+
   return (
     <>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -123,6 +141,8 @@ export default async function DashboardPage() {
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
         <div className="min-w-0 space-y-5">
+          <OnboardingChecklist pasos={pasosOnboarding} />
+
           <div className="grid gap-3 sm:grid-cols-3">
             <StatTile label="Ingresos del mes" value={formatMoney(resumen.incomeCents)} tone="positive" />
             <StatTile label="Gastos del mes" value={formatMoney(resumen.expenseCents)} tone="negative" />
