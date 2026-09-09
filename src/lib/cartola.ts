@@ -15,6 +15,7 @@
 import * as XLSX from "xlsx";
 
 import { generarJSON } from "@/lib/ai/gemini";
+import { sugerirCategoriaPorComercio } from "@/lib/categorizar-comercio";
 import { inputToCents } from "@/lib/money";
 
 const MAX_FILAS = 1000;
@@ -219,8 +220,20 @@ function indiceColumna(encabezado: string[], nombreColumna: string): number {
   return encabezado.findIndex((h) => h.trim().toLowerCase() === nombreColumna.trim().toLowerCase());
 }
 
-/** Heuristica liviana: no llama a la IA por fila, solo busca coincidencias de texto contra las categorias del usuario. */
+/**
+ * Primero busca un comercio conocido (Uber, Unimarc, Netflix...) contra el
+ * diccionario de categorizar-comercio.ts - esto es lo que realmente reconoce
+ * "COMPRA UBER TRIP*" como Transporte. Si no hay match ahi, cae a una
+ * heuristica mas debil: comparar la descripcion contra el NOMBRE de la
+ * categoria (util para el puñado de casos donde el banco ya escribe algo
+ * parecido al nombre, ej. "TRANSPORTE METRO").
+ */
 function sugerirCategoria(descripcion: string, categorias: CategoriaDisponible[], type: "INCOME" | "EXPENSE"): string | null {
+  if (type === "EXPENSE") {
+    const porComercio = sugerirCategoriaPorComercio(descripcion, categorias);
+    if (porComercio) return porComercio;
+  }
+
   const texto = descripcion.toLowerCase();
   const candidata = categorias.find(
     (c) => c.kind === type && (texto.includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(texto)),
