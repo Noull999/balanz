@@ -109,8 +109,10 @@ export function gastoPorDia(
 
 /**
  * Promedio de gasto mensual por categoria en los ultimos `meses` (sin contar
- * el actual). Es el habito real que usa el plan de distribucion para repartir
- * cada balde proporcional a lo que la persona ya gasta, no parejo a ciegas.
+ * el actual, que todavia no termino y podria estar sesgado por una sola
+ * compra grande). Es el habito real que usa el plan de distribucion para
+ * repartir cada balde proporcional a lo que la persona ya gasta, no parejo a
+ * ciegas.
  */
 export function promedioGastoPorCategoria(
   transacciones: TransaccionInsight[],
@@ -130,6 +132,18 @@ export function promedioGastoPorCategoria(
   for (const [categoryId, total] of totales) {
     promedios.set(categoryId, Math.round(total / meses));
   }
+
+  // Categorias SIN nada en los meses anteriores (cuenta recien empezada, o
+  // una categoria que se estreno este mes) quedarian en $0 aunque la persona
+  // ya este gastando ahi. Para esas puntuales se usa el gasto del mes en
+  // curso como base: parcial, pero mejor guia para el reparto que "$0" - las
+  // categorias que ya tienen historial real no se tocan.
+  for (const categoria of gastoPorCategoria(transacciones, hoy)) {
+    if (!promedios.has(categoria.categoryId)) {
+      promedios.set(categoria.categoryId, categoria.amountCents);
+    }
+  }
+
   return promedios;
 }
 
