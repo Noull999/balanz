@@ -27,10 +27,13 @@ export function BandejaPendientes({
   pendientes,
   categorias,
   gmail,
+  desdeDefecto,
 }: {
   pendientes: Pendiente[];
   categorias: Categoria[];
   gmail: { conectado: boolean; email: string | null };
+  /** "2026-09-01": primer dia del mes actual, precarga el filtro de la cartola. */
+  desdeDefecto: string;
 }) {
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
@@ -58,7 +61,7 @@ export function BandejaPendientes({
 
       <div className="mt-4 grid gap-4 border-t border-border pt-4 sm:grid-cols-2">
         <FormularioTexto />
-        <FormularioCartola />
+        <FormularioCartola desdeDefecto={desdeDefecto} />
       </div>
     </div>
   );
@@ -271,7 +274,7 @@ function FormularioTexto() {
  * descarga cualquier banco) para agarrar lo que el correo no capto. Los
  * movimientos que ya estan cargados (por correo o a mano) no se duplican.
  */
-function FormularioCartola() {
+function FormularioCartola({ desdeDefecto }: { desdeDefecto: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [cantidadArchivos, setCantidadArchivos] = useState(0);
   const [pending, setPending] = useState(false);
@@ -287,6 +290,7 @@ function FormularioCartola() {
       if (inputRef.current) inputRef.current.value = "";
       const partes = [`${r.nuevos} nuevo${r.nuevos === 1 ? "" : "s"}`];
       if (r.duplicados > 0) partes.push(`${r.duplicados} ya estaba${r.duplicados === 1 ? "" : "n"} cargado${r.duplicados === 1 ? "" : "s"}`);
+      if (r.fueraDeRango > 0) partes.push(`${r.fueraDeRango} fuera del rango`);
       const archivos = r.archivos > 1 ? ` (${r.archivos} archivos)` : "";
       setResultado({ ok: true, mensaje: `Listo: ${partes.join(", ")} de ${r.leidos} filas${archivos}.` });
     } else {
@@ -314,6 +318,19 @@ function FormularioCartola() {
         onChange={(event) => setCantidadArchivos(event.target.files?.length ?? 0)}
         className="block w-full text-sm text-muted file:mr-3 file:rounded-lg file:border file:border-border file:bg-background file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground"
       />
+
+      <div>
+        <label htmlFor="desde" className="block text-xs text-muted">
+          Solo movimientos desde
+        </label>
+        <input
+          id="desde"
+          name="desde"
+          type="date"
+          defaultValue={desdeDefecto}
+          className="mt-1 block w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/40"
+        />
+      </div>
 
       {resultado && (
         <p className={`text-sm ${resultado.ok ? "text-positive" : "text-negative"}`}>{resultado.mensaje}</p>

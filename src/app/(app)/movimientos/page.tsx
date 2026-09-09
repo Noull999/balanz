@@ -5,7 +5,7 @@ import Link from "next/link";
 import { BandejaPendientes } from "@/components/transactions/bandeja-pendientes";
 import { BorrarMovimiento } from "@/components/transactions/borrar-movimiento";
 import { requireUser } from "@/lib/auth";
-import { formatDay } from "@/lib/date";
+import { formatDay, startOfUtcMonth, toDateInput, todayInput, toUtcDay } from "@/lib/date";
 import { formatMoney } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 
@@ -88,6 +88,7 @@ export default async function MovimientosPage() {
           pendientes={pendientes}
           categorias={categorias}
           gmail={{ conectado: conexionGmail !== null, email: conexionGmail?.email ?? null }}
+          desdeDefecto={toDateInput(startOfUtcMonth(toUtcDay(todayInput())))}
         />
       </div>
 

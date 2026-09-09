@@ -8,7 +8,7 @@ import { toUtcDay } from "@/lib/date";
 import { prisma } from "@/lib/prisma";
 
 export type ResultadoImportacion =
-  | { ok: true; archivos: number; leidos: number; nuevos: number; duplicados: number; descartados: number }
+  | { ok: true; archivos: number; leidos: number; nuevos: number; duplicados: number; descartados: number; fueraDeRango: number }
   | { ok: false; error: string };
 
 const MAX_TAMANO_BYTES = 5 * 1024 * 1024;
@@ -30,6 +30,12 @@ export async function importarCartola(formData: FormData): Promise<ResultadoImpo
   if (archivos.length === 0) {
     return { ok: false, error: "Elige al menos un archivo primero." };
   }
+
+  // Sin este filtro el import trae TODO el historial del archivo (algunos
+  // bancos, como la tarjeta CMR, exportan varios meses de una) en vez de solo
+  // lo que corresponde al periodo que el usuario esta cargando.
+  const desdeInput = String(formData.get("desde") ?? "");
+  const desdeFiltro = /^\d{4}-\d{2}-\d{2}$/.test(desdeInput) ? toUtcDay(desdeInput) : null;
   const demasiadoGrande = archivos.find((a) => a.size > MAX_TAMANO_BYTES);
   if (demasiadoGrande) {
     return { ok: false, error: `"${demasiadoGrande.name}" es demasiado grande (maximo 5 MB).` };
@@ -55,9 +61,15 @@ export async function importarCartola(formData: FormData): Promise<ResultadoImpo
     descartados += resultado.filasDescartadas;
   }
 
-  const todos = porArchivo.flatMap(({ nombre, movimientos }) => movimientos.map((m) => ({ ...m, nombreArchivo: nombre })));
+  const todosSinFiltrar = porArchivo.flatMap(({ nombre, movimientos }) => movimientos.map((m) => ({ ...m, nombreArchivo: nombre })));
+
+  const todos = desdeFiltro
+    ? todosSinFiltrar.filter((m) => toUtcDay(m.date) >= desdeFiltro)
+    : todosSinFiltrar;
+  const fueraDeRango = todosSinFiltrar.length - todos.length;
+
   if (todos.length === 0) {
-    return { ok: true, archivos: archivos.length, leidos, nuevos: 0, duplicados: 0, descartados };
+    return { ok: true, archivos: archivos.length, leidos, nuevos: 0, duplicados: 0, descartados, fueraDeRango };
   }
 
   const fechas = todos.map((m) => toUtcDay(m.date));
@@ -113,5 +125,5 @@ export async function importarCartola(formData: FormData): Promise<ResultadoImpo
   }
 
   revalidatePath("/movimientos");
-  return { ok: true, archivos: archivos.length, leidos, nuevos, duplicados, descartados };
+  return { ok: true, archivos: archivos.length, leidos, nuevos, duplicados, descartados, fueraDeRango };
 }

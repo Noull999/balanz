@@ -168,22 +168,40 @@ function parsearCsv(texto: string): string[][] {
   return filas;
 }
 
+const REINTENTOS_LECTURA_EXCEL = 2;
+
 /**
  * Excel real (.xlsx/.xls): las celdas de fecha tienen un TIPO explicito, sin
  * la ambiguedad de un CSV, asi que XLSX las convierte bien pidiendole
  * `cellDates` + un formato ISO fijo (`dateNF`) en vez de dejarle adivinar el
  * formato de salida por su cuenta.
+ *
+ * Confirmado con un .xls real (formato OLE2 viejo): XLSX.read() a veces tira
+ * "Cannot read properties of undefined" de la nada y al toque, con el MISMO
+ * archivo, funciona bien - intermitente, no un problema del archivo. Se
+ * reintenta un par de veces antes de darse por vencido, mismo criterio que ya
+ * se usa con Gemini.
  */
 function leerFilasExcel(buffer: ArrayBuffer): string[][] {
-  const libro = XLSX.read(buffer, { type: "array", cellDates: true });
-  const hoja = libro.Sheets[libro.SheetNames[0]];
-  const filas = XLSX.utils.sheet_to_json<string[]>(hoja, {
-    header: 1,
-    raw: false,
-    defval: "",
-    dateNF: "yyyy-mm-dd",
-  });
-  return filas;
+  let ultimoError: unknown;
+
+  for (let intento = 0; intento <= REINTENTOS_LECTURA_EXCEL; intento++) {
+    try {
+      const libro = XLSX.read(buffer, { type: "array", cellDates: true });
+      const hoja = libro.Sheets[libro.SheetNames[0]];
+      return XLSX.utils.sheet_to_json<string[]>(hoja, {
+        header: 1,
+        raw: false,
+        defval: "",
+        dateNF: "yyyy-mm-dd",
+      });
+    } catch (error) {
+      ultimoError = error;
+      console.error(`XLSX.read fallo (intento ${intento + 1}/${REINTENTOS_LECTURA_EXCEL + 1}):`, error);
+    }
+  }
+
+  throw ultimoError;
 }
 
 function leerFilas(buffer: ArrayBuffer, nombreArchivo: string): string[][] {
